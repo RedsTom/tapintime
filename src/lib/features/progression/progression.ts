@@ -1,4 +1,5 @@
 import localforage from 'localforage';
+import type { Layout } from '$lib/schemas/titl';
 
 export interface FingerStats {
 	totalHits: number;
@@ -33,33 +34,84 @@ export interface ProgressionData {
 	averageLatencyMs?: number;
 }
 
+export interface KeyTierDefinition {
+	tier: number;
+	keyCodes: string[];
+	xpRequired: number;
+}
+
 export interface KeyTier {
 	tier: number;
 	keys: string[];
 	xpRequired: number;
 	name: string;
+	keyCodes: string[];
 }
 
 /**
- * 15 Paliers de déblocage progressif des touches.
+ * Définition physique des 15 paliers basée sur les répertoires de touches (KeyCodes).
  */
-export const KEY_TIERS: KeyTier[] = [
-	{ tier: 1, keys: ['f', 'j'], xpRequired: 0, name: 'F, J' },
-	{ tier: 2, keys: ['d', 'k'], xpRequired: 100, name: 'D, K' },
-	{ tier: 3, keys: ['s', 'l'], xpRequired: 220, name: 'S, L' },
-	{ tier: 4, keys: ['q', 'm'], xpRequired: 360, name: 'Q, M' },
-	{ tier: 5, keys: ['g', 'h'], xpRequired: 520, name: 'G, H' },
-	{ tier: 6, keys: ['r', 'u'], xpRequired: 700, name: 'R, U' },
-	{ tier: 7, keys: ['e', 'i'], xpRequired: 900, name: 'E, I' },
-	{ tier: 8, keys: ['z', 'o'], xpRequired: 1120, name: 'Z, O' },
-	{ tier: 9, keys: ['a', 'p'], xpRequired: 1360, name: 'A, P' },
-	{ tier: 10, keys: ['t', 'y'], xpRequired: 1620, name: 'T, Y' },
-	{ tier: 11, keys: ['v', ','], xpRequired: 1900, name: 'V, ,' },
-	{ tier: 12, keys: ['c', ';'], xpRequired: 2200, name: 'C, ;' },
-	{ tier: 13, keys: ['x', ':'], xpRequired: 2520, name: 'X, :' },
-	{ tier: 14, keys: ['w', '!'], xpRequired: 2860, name: 'W, !' },
-	{ tier: 15, keys: ['b', 'n'], xpRequired: 3220, name: 'B, N' }
+export const KEY_TIER_DEFINITIONS: KeyTierDefinition[] = [
+	{ tier: 1, keyCodes: ['KeyF', 'KeyJ'], xpRequired: 0 },
+	{ tier: 2, keyCodes: ['KeyD', 'KeyK'], xpRequired: 100 },
+	{ tier: 3, keyCodes: ['KeyS', 'KeyL'], xpRequired: 220 },
+	{ tier: 4, keyCodes: ['KeyQ', 'KeyM'], xpRequired: 360 },
+	{ tier: 5, keyCodes: ['KeyG', 'KeyH'], xpRequired: 520 },
+	{ tier: 6, keyCodes: ['KeyR', 'KeyU'], xpRequired: 700 },
+	{ tier: 7, keyCodes: ['KeyE', 'KeyI'], xpRequired: 900 },
+	{ tier: 8, keyCodes: ['KeyZ', 'KeyO'], xpRequired: 1120 },
+	{ tier: 9, keyCodes: ['KeyA', 'KeyP'], xpRequired: 1360 },
+	{ tier: 10, keyCodes: ['KeyT', 'KeyY'], xpRequired: 1620 },
+	{ tier: 11, keyCodes: ['KeyV', 'Comma'], xpRequired: 1900 },
+	{ tier: 12, keyCodes: ['KeyC', 'Semicolon'], xpRequired: 2200 },
+	{ tier: 13, keyCodes: ['KeyX', 'Colon'], xpRequired: 2520 },
+	{ tier: 14, keyCodes: ['KeyW', 'Exclamation'], xpRequired: 2860 },
+	{ tier: 15, keyCodes: ['KeyB', 'KeyN'], xpRequired: 3220 }
 ];
+
+/**
+ * Résout le caractère associé à un KeyCode pour une disposition donnée.
+ */
+export function getCharForKeyCode(keyCode: string, layout?: Layout | null): string {
+	if (!layout || !layout.layers || layout.layers.length === 0) {
+		const azertyDefaults: Record<string, string> = {
+			KeyF: 'f', KeyJ: 'j', KeyD: 'd', KeyK: 'k', KeyS: 's', KeyL: 'l',
+			KeyQ: 'q', KeyM: 'm', KeyG: 'g', KeyH: 'h', KeyR: 'r', KeyU: 'u',
+			KeyE: 'e', KeyI: 'i', KeyZ: 'z', KeyO: 'o', KeyA: 'a', KeyP: 'p',
+			KeyT: 't', KeyY: 'y', KeyV: 'v', Comma: ',', KeyC: 'c', Semicolon: ';',
+			KeyX: 'x', Colon: ':', KeyW: 'w', Exclamation: '!', KeyB: 'b', KeyN: 'n'
+		};
+		return azertyDefaults[keyCode] || keyCode.replace('Key', '').toLowerCase();
+	}
+
+	for (const layer of layout.layers) {
+		const key = layer.keys.find((k) => k.keyCode.toLowerCase() === keyCode.toLowerCase());
+		if (key && key.char) return key.char.toLowerCase();
+	}
+	for (const thumbKey of layout.thumbKeys || []) {
+		if (thumbKey.keyCode.toLowerCase() === keyCode.toLowerCase()) return 'space';
+	}
+	return keyCode.replace('Key', '').toLowerCase();
+}
+
+/**
+ * Génère les paliers de touches traduits selon le layout actif.
+ */
+export function getKeyTiersForLayout(layout?: Layout | null): KeyTier[] {
+	return KEY_TIER_DEFINITIONS.map((def) => {
+		const keys = def.keyCodes.map((code) => getCharForKeyCode(code, layout)).filter(Boolean);
+		const name = keys.map((k) => k.toUpperCase()).join(', ');
+		return {
+			tier: def.tier,
+			keys,
+			xpRequired: def.xpRequired,
+			name,
+			keyCodes: def.keyCodes
+		};
+	});
+}
+
+export const KEY_TIERS: KeyTier[] = getKeyTiersForLayout(null);
 
 const DEFAULT: ProgressionData = {
 	xp: 0,
@@ -104,39 +156,46 @@ export function getPlayerLevel(xp: number): { level: number; currentXp: number; 
 }
 
 /**
- * Calcule la liste des touches débloquées en fonction des paliers d'XP accumulés.
+ * Calcule la liste des touches débloquées en fonction des paliers d'XP et du layout actif.
  */
-export function getUnlockedKeys(xp: number): string[] {
+export function getUnlockedKeys(xp: number, layout?: Layout | null): string[] {
+	const tiers = getKeyTiersForLayout(layout);
 	const unlocked: string[] = [];
-	for (const tier of KEY_TIERS) {
+	for (const tier of tiers) {
 		if (xp >= tier.xpRequired) {
-			unlocked.push(...tier.keys);
+			for (const key of tier.keys) {
+				if (!unlocked.includes(key.toLowerCase())) {
+					unlocked.push(key.toLowerCase());
+				}
+			}
 		}
 	}
-	return unlocked.length > 0 ? unlocked : ['f', 'j'];
+	return unlocked.length > 0 ? unlocked : [getCharForKeyCode('KeyF', layout), getCharForKeyCode('KeyJ', layout)];
 }
 
 /**
- * Renvoie les détails du palier actuel et du prochain palier à débloquer.
+ * Renvoie les détails du palier actuel et du prochain palier adaptiques au layout.
  */
-export function getTierInfo(xp: number): {
+export function getTierInfo(xp: number, layout?: Layout | null): {
 	currentTier: KeyTier;
 	nextTier: KeyTier | null;
 	progressToNextRatio: number;
 	xpNeededForNext: number;
+	allTiers: KeyTier[];
 } {
-	let currentTier = KEY_TIERS[0];
-	let nextTier: KeyTier | null = KEY_TIERS[1];
+	const allTiers = getKeyTiersForLayout(layout);
+	let currentTier = allTiers[0];
+	let nextTier: KeyTier | null = allTiers[1];
 
-	for (let i = 0; i < KEY_TIERS.length; i++) {
-		if (xp >= KEY_TIERS[i].xpRequired) {
-			currentTier = KEY_TIERS[i];
-			nextTier = KEY_TIERS[i + 1] ?? null;
+	for (let i = 0; i < allTiers.length; i++) {
+		if (xp >= allTiers[i].xpRequired) {
+			currentTier = allTiers[i];
+			nextTier = allTiers[i + 1] ?? null;
 		}
 	}
 
 	if (!nextTier) {
-		return { currentTier, nextTier: null, progressToNextRatio: 1.0, xpNeededForNext: 0 };
+		return { currentTier, nextTier: null, progressToNextRatio: 1.0, xpNeededForNext: 0, allTiers };
 	}
 
 	const xpStart = currentTier.xpRequired;
@@ -146,11 +205,11 @@ export function getTierInfo(xp: number): {
 	const progressToNextRatio = Math.min(1.0, Math.max(0, currentProgress / totalNeeded));
 	const xpNeededForNext = xpEnd - xp;
 
-	return { currentTier, nextTier, progressToNextRatio, xpNeededForNext };
+	return { currentTier, nextTier, progressToNextRatio, xpNeededForNext, allTiers };
 }
 
 /**
- * Charge les données de progression depuis le stockage local (avec cache en mémoire).
+ * Charge les données de progression depuis le stockage local.
  */
 export async function loadProgression(): Promise<ProgressionData> {
 	if (!cachedProgression) {
@@ -185,7 +244,7 @@ export async function saveProgression(data?: ProgressionData): Promise<void> {
 }
 
 /**
- * Sauvegarde temporisée pour accumuler les modifications en mémoire avant d'écrire dans LocalForage.
+ * Sauvegarde temporisée (debounced) pour accumuler les modifications en mémoire.
  */
 function queueSaveProgression(): void {
 	if (saveTimeout) clearTimeout(saveTimeout);
@@ -263,16 +322,17 @@ export async function completeMap(
 	score: number,
 	accuracy: number,
 	missCount: number,
-	maxCombo: number
+	maxCombo: number,
+	layout?: Layout | null
 ): Promise<{ xpEarned: number; grade: RankGrade; newlyUnlockedKeys: string[] }> {
 	const prog = await loadProgression();
-	const oldUnlocked = getUnlockedKeys(prog.xp);
+	const oldUnlocked = getUnlockedKeys(prog.xp, layout);
 
 	const grade = getGradeRank(accuracy, missCount);
 	const xpEarned = grade === 'SS' ? 50 : grade === 'S' ? 35 : grade === 'A' ? 25 : grade === 'B' ? 15 : 10;
 
 	prog.xp += xpEarned;
-	const newUnlocked = getUnlockedKeys(prog.xp);
+	const newUnlocked = getUnlockedKeys(prog.xp, layout);
 	prog.unlockedKeys = newUnlocked;
 
 	const newlyUnlockedKeys = newUnlocked.filter((k) => !oldUnlocked.includes(k));

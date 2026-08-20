@@ -1,9 +1,11 @@
 <script lang="ts">
 	import type { BeatmapEditorState } from '../beatmapEditorState.svelte';
-	import { KEY_TIERS } from '$lib/progression';
+	import { getKeyTiersForLayout } from '$lib/features/progression/progression';
 	import { Layers, Award, Eye } from '@lucide/svelte';
 
 	let { editor }: { editor: BeatmapEditorState } = $props();
+
+	const activeTiers = $derived(getKeyTiersForLayout(null));
 </script>
 
 <div class="bg-surface border-4 border-secondary p-4 rounded-xl shadow-[5px_5px_0px_#1a0033] flex flex-col gap-3 select-none">
@@ -43,7 +45,7 @@
 				class="w-full bg-surface text-text border-2 border-secondary font-mono font-black text-xs uppercase rounded p-2 focus:outline-none focus:border-primary shadow-[2px_2px_0px_#1a0033] cursor-pointer"
 			>
 				<option value={15}>15/15 (Toutes les touches)</option>
-				{#each KEY_TIERS as tier}
+				{#each activeTiers as tier}
 					<option value={tier.tier}>
 						Palier {tier.tier} ({tier.name})
 					</option>

@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { Key, Lock, Sparkles, Trophy } from '@lucide/svelte';
-	import { KEY_TIERS, getTierInfo, type KeyTier } from '../progression';
+	import { getTierInfo, type KeyTier } from '../progression';
+	import type { Layout } from '$lib/schemas/titl';
 
-	let { xp = 0 }: { xp?: number } = $props();
+	let { xp = 0, layout = null }: { xp?: number; layout?: Layout | null } = $props();
 
-	const tierInfo = $derived(getTierInfo(xp));
+	const tierInfo = $derived(getTierInfo(xp, layout));
 </script>
 
 <div class="bg-surface border-4 border-secondary p-5 rounded-2xl shadow-[6px_6px_0px_#1a0033] flex flex-col gap-4 text-left select-none">
@@ -46,9 +47,9 @@
 		{/if}
 	</div>
 
-	<!-- Grille des 15 Paliers dans l'ordre -->
+	<!-- Grille des 15 Paliers dans l'ordre (Traduits selon le layout actif) -->
 	<div class="flex flex-wrap gap-2">
-		{#each KEY_TIERS as tier}
+		{#each tierInfo.allTiers as tier}
 			{@const isUnlocked = xp >= tier.xpRequired}
 			{@const isCurrent = tier.tier === tierInfo.currentTier.tier}
 

@@ -3,7 +3,8 @@
 	import LevelCard from '$lib/components/LevelCard.svelte';
 	import { loadProgression, type ProgressionData } from '$lib/features/progression/progression';
 	import { loadSettings, type UserSettings } from '$lib/settings';
-	import { getCustomBeatmaps, deleteCustomBeatmap } from '$lib/storage';
+	import { getCustomBeatmaps, deleteCustomBeatmap, loadLayoutByNameOrId } from '$lib/storage';
+	import type { Layout } from '$lib/schemas/titl';
 	import { BeatmapImporter } from '$lib/features/beatmap/importers/beatmapImporter';
 	import { AudioPreviewManager } from '$lib/features/beatmap/audioPreview';
 	import PlayerBar from '$lib/features/beatmap/components/PlayerBar.svelte';
@@ -18,6 +19,7 @@
 	let searchQuery = $state<string>('');
 	let progression = $state<ProgressionData | null>(null);
 	let settings = $state<UserSettings | null>(null);
+	let activeLayout = $state<Layout | null>(null);
 
 	// Drag & drop state
 	let isDraggingFile = $state(false);
@@ -55,6 +57,9 @@
 		async function init() {
 			progression = await loadProgression();
 			settings = await loadSettings();
+			try {
+				activeLayout = await loadLayoutByNameOrId(settings.activeLayout);
+			} catch {}
 			await refreshMapsList();
 		}
 		init();
@@ -178,8 +183,8 @@
 <DragAndDropOverlay isDragging={isDraggingFile} />
 
 <div class="max-w-4xl mx-auto px-6 py-6 flex flex-col gap-6 text-left select-none pb-32">
-	<!-- Widget de Progression des Paliers de Touches -->
-	<KeysProgressionWidget xp={progression?.xp ?? 0} />
+	<!-- Widget de Progression des Paliers de Touches Adapté au Layout Actif -->
+	<KeysProgressionWidget xp={progression?.xp ?? 0} layout={activeLayout} />
 
 	<!-- Barre de Recherche et Importation -->
 	<div class="flex items-center justify-between gap-4">
