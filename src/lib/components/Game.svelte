@@ -205,24 +205,24 @@
 
 	<!-- Overlay de sélection des touches actives (Prêt à démarrer) -->
 	{#if showKeySelector && isLoaded}
-		<div class="absolute inset-0 z-40 bg-bg/95 flex flex-col items-center justify-center p-6 text-center select-none backdrop-blur-sm text-text">
-			<div class="bg-surface border-4 border-secondary p-8 rounded-xl shadow-[8px_8px_0px_#1a0033] max-w-2xl flex flex-col items-center gap-6">
-				<div class="flex flex-col gap-1.5">
-					<div class="text-2xl font-black uppercase text-primary tracking-wider">Prêt à Démarrer</div>
-					<p class="text-xs font-bold text-text-dim uppercase tracking-wider">
+		<div class="absolute inset-0 z-40 bg-bg/95 flex flex-col items-center justify-center p-6 text-center select-none backdrop-blur-md text-text">
+			<div class="bg-surface border-4 border-secondary p-10 rounded-xl shadow-[8px_8px_0px_#1a0033] max-w-3xl w-full flex flex-col items-center gap-8 transition-all duration-300">
+				<div class="flex flex-col gap-2">
+					<h2 class="text-3xl font-black uppercase text-primary tracking-wider">Prêt à Démarrer</h2>
+					<p class="text-sm font-bold text-text-dim uppercase tracking-wider">
 						Configurez vos touches actives avant de lancer le niveau ({selectedKeys.size} actives).
 					</p>
-					<p class="text-[10px] font-black text-accent uppercase tracking-widest">
+					<p class="text-xs font-black text-accent uppercase tracking-widest mt-1">
 						(Cliquez sur les touches pour les activer/désactiver — Minimum 2 touches)
 					</p>
 				</div>
 
 				<!-- Clavier Virtuel Interactif -->
-				<div class="w-full py-2">
+				<div class="w-full flex justify-center py-4 my-2 border-y-4 border-secondary/20">
 					<VirtualKeyboard 
 						{layout} 
 						{unlockedKeys} 
-						scale={(settings?.keyboardScale ?? 1.0) * 0.9} 
+						scale={1.0} 
 						selectable={true}
 						{selectedKeys}
 						onKeyToggle={toggleKey}
@@ -232,9 +232,9 @@
 				<button
 					onclick={initEngineAndStart}
 					disabled={selectedKeys.size < 2}
-					class="border-4 border-secondary bg-primary text-secondary px-8 py-3 rounded-lg font-black uppercase text-sm md:text-base shadow-[4px_4px_0px_#ff3366] hover:translate-x-[2px] hover:translate-y-[2px] cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0 flex items-center gap-2"
+					class="border-4 border-secondary bg-primary text-secondary px-10 py-4 rounded-lg font-black uppercase text-base md:text-lg shadow-[6px_6px_0px_#ff3366] hover:translate-x-[2px] hover:translate-y-[2px] cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0 flex items-center gap-3 active:scale-95"
 				>
-					<Play class="w-5 h-5 fill-secondary" /> LANCER LA PARTIE
+					<Play class="w-6 h-6 fill-secondary" /> LANCER LA PARTIE
 				</button>
 			</div>
 		</div>

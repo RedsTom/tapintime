@@ -69,8 +69,8 @@
 </script>
 
 <div
-	class="flex flex-col gap-1.5 md:gap-2 p-4 md:p-5 bg-secondary/30 border-4 border-secondary rounded-xl shadow-neo select-none w-fit mx-auto transition-transform duration-100"
-	style="transform: scale({scale}); transform-origin: center bottom;"
+	class="flex flex-col gap-1.5 md:gap-2 select-none w-fit mx-auto transition-transform duration-100 {!selectable ? 'bg-secondary/30 border-4 border-secondary rounded-xl shadow-neo p-4 md:p-5' : 'p-2'}"
+	style="transform: scale({scale}); transform-origin: center;"
 >
 	{#each rows as rowKeys, rowIndex}
 		{@const rowOffset = rowStaggerOffsets[rowIndex] ?? 0}
