@@ -2,7 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import type { Layout } from '$lib/schemas/titl';
 	import type { Manifest } from '$lib/schemas/titm';
-	import { loadAudio, ensureAudioContextRunning, getAudioContext, playHitSound, playComboBreakSound } from '$lib/audio';
+	import { loadAudio, ensureAudioContextRunning, getAudioContext, playHitSound, playComboBreakSound, setMasterVolume } from '$lib/audio';
 	import { updateFingerStats, updateKeyStats, recordHitLatency, completeMap, loadProgression, getUnlockedKeys, type RankGrade } from '$lib/progression';
 	import { loadSettings, type UserSettings } from '$lib/settings';
 	import VirtualKeyboard from '$lib/components/VirtualKeyboard.svelte';
@@ -57,6 +57,8 @@
 		settings = await loadSettings();
 		const prog = await loadProgression();
 		unlockedKeys = new Set(getUnlockedKeys(prog.xp, layout));
+
+		setMasterVolume(settings.masterVolume / 100);
 
 		await loadAudio(audioBlob);
 

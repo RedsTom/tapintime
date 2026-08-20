@@ -3,10 +3,11 @@
 	import { COLORS, SHADOW, SPACING } from '$lib/tokens';
 	import { loadSettings, saveSettings, type UserSettings } from '$lib/settings';
 	import { loadProgression, getUnlockedKeys, type ProgressionData } from '$lib/progression';
+	import { setMasterVolume, playHitSound } from '$lib/audio';
 	import VirtualKeyboard from '$lib/components/VirtualKeyboard.svelte';
 	import { LayoutSchema, type Layout } from '$lib/schemas/titl';
 	import { loadLayoutByNameOrId, saveCustomLayout, getCustomLayouts, type CustomLayoutItem } from '$lib/storage';
-	import { Keyboard, Sliders, Gamepad2, Eye, Upload, Target, Check, RefreshCw, Zap, Clock } from '@lucide/svelte';
+	import { Keyboard, Sliders, Gamepad2, Eye, Upload, Target, Check, RefreshCw, Zap, Clock, Volume2 } from '@lucide/svelte';
 	import Checkbox from '$lib/components/Checkbox.svelte';
 	import Slider from '$lib/components/Slider.svelte';
 	import Button from '$lib/components/Button.svelte';
@@ -29,6 +30,7 @@
 			settings = await loadSettings();
 			progression = await loadProgression();
 			customLayouts = await getCustomLayouts();
+			setMasterVolume(settings.masterVolume / 100);
 			await loadLayoutPreview(settings.activeLayout);
 		}
 		init();
@@ -62,6 +64,13 @@
 	async function updateSettings() {
 		if (!settings) return;
 		await saveSettings(settings);
+	}
+
+	function onVolumeChange() {
+		if (!settings) return;
+		setMasterVolume(settings.masterVolume / 100);
+		playHitSound();
+		updateSettings();
 	}
 
 	async function changeLayout(nameOrId: string) {
@@ -221,11 +230,15 @@
 		<!-- Column 3: Calibration Audio & Visuelle -->
 		<div class="bg-surface border-4 border-secondary p-6 rounded-xl shadow-[6px_6px_0px_0px_#1a0033] flex flex-col gap-6 mt-4">
 			<h2 class="text-lg font-black uppercase tracking-wider text-accent flex items-center gap-2 border-b-2 border-secondary pb-2">
-				<Target class="w-5 h-5" /> Calibration des Timings & Latence Mesurée
+				<Volume2 class="w-5 h-5" /> Volume & Calibration
 			</h2>
 
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-				<div class="flex flex-col gap-4">
+				<div class="flex flex-col gap-5">
+					<Slider label="Volume Général (%)" min={0} max={100} step={5} bind:value={settings.masterVolume} onchange={onVolumeChange} />
+					
+					<div class="w-full h-px bg-secondary/30 mt-1 mb-1"></div>
+					
 					<Slider label="Offset Audio (ms)" min={-200} max={200} step={5} bind:value={settings.audioOffsetMs} onchange={updateSettings} />
 					<Slider label="Offset Visuel (ms)" min={-200} max={200} step={5} bind:value={settings.visualOffsetMs} onchange={updateSettings} />
 				</div>
