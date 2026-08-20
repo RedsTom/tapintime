@@ -11,6 +11,23 @@
 	let app: Application | null = null;
 	let noteContainer: Container | null = null;
 
+	let trackLane: Graphics | null = null;
+	let targetZonesContainer: Container | null = null;
+	let laserLine: Graphics | null = null;
+	let maskGfx: Graphics | null = null;
+
+	let totalLanes = $derived.by(() => {
+		const adapted = editor.getAdaptedHitObjects();
+		if (adapted.length === 0) return 1;
+		let maxLane = 0;
+		for (const note of adapted) {
+			if (note.laneIndex !== undefined && note.laneIndex > maxLane) {
+				maxLane = note.laneIndex;
+			}
+		}
+		return maxLane + 1;
+	});
+
 	interface PreviewNode {
 		container: Container;
 		bg: Graphics;
@@ -71,14 +88,64 @@
 		return node;
 	}
 
+	function redrawGraphics(lanes: number, width: number) {
+		if (!trackLane || !targetZonesContainer || !laserLine || !maskGfx) return;
+
+		const height = 140 + (lanes - 1) * 35;
+		const yCenter = height / 2;
+		const hitLineX = width * 0.4;
+		const margin = 24;
+		const laneSpacing = 35;
+		const trackHeight = 96 + (lanes - 1) * laneSpacing;
+
+		trackLane.clear()
+			.roundRect(margin, yCenter - trackHeight / 2, width - margin * 2, trackHeight, 14)
+			.fill({ color: parseInt(COLORS.secondary.replace('#', ''), 16), alpha: 0.85 })
+			.stroke({ width: 4, color: parseInt(COLORS.primary.replace('#', ''), 16), alpha: 1.0 });
+
+		targetZonesContainer.position.set(hitLineX, yCenter);
+		targetZonesContainer.removeChildren();
+		for (let i = 0; i < lanes; i++) {
+			const laneYOffset = (i - (lanes - 1) / 2) * laneSpacing;
+			const targetZoneGfx = new Graphics()
+				.roundRect(-30, -30 + laneYOffset, 60, 60, 10)
+				.fill({ color: parseInt(COLORS.primary.replace('#', ''), 16), alpha: 0.25 })
+				.stroke({ width: 4, color: parseInt(COLORS.accent.replace('#', ''), 16), alpha: 1.0 });
+			targetZonesContainer.addChild(targetZoneGfx);
+		}
+
+		laserLine.position.set(hitLineX, yCenter);
+		laserLine.clear()
+			.rect(-2, -trackHeight / 2, 4, trackHeight)
+			.fill({ color: parseInt(COLORS.primary.replace('#', ''), 16), alpha: 1.0 });
+
+		maskGfx.clear()
+			.roundRect(margin, yCenter - trackHeight / 2, width - margin * 2, trackHeight, 14)
+			.fill({ color: 0xffffff });
+	}
+
 	onMount(() => {
 		let animId: number;
 
 		const handleResize = () => {
 			if (app && containerEl) {
-				app.renderer.resize(containerEl.clientWidth, 140);
+				const height = 140 + (totalLanes - 1) * 35;
+				app.renderer.resize(containerEl.clientWidth, height);
+				redrawGraphics(totalLanes, containerEl.clientWidth);
 			}
 		};
+
+		// React to changes in totalLanes
+		const effectUnsub = $effect.root(() => {
+			$effect(() => {
+				const lanes = totalLanes;
+				if (app && containerEl) {
+					const height = 140 + (lanes - 1) * 35;
+					app.renderer.resize(containerEl.clientWidth, height);
+					redrawGraphics(lanes, containerEl.clientWidth);
+				}
+			});
+		});
 
 		async function initApp() {
 			if (!containerEl) return;
@@ -87,7 +154,7 @@
 			await app.init({
 				canvas: document.createElement('canvas'),
 				width: containerEl.clientWidth,
-				height: 140,
+				height: 140 + (totalLanes - 1) * 35,
 				backgroundAlpha: 0,
 				antialias: true,
 				resolution: window.devicePixelRatio,
@@ -96,44 +163,27 @@
 
 			containerEl.appendChild(app.canvas);
 
-			const yCenter = 70;
-			const hitLineX = containerEl.clientWidth * 0.4;
-			const margin = 24;
-
-			// Track Lane
-			const trackLane = new Graphics()
-				.roundRect(margin, yCenter - 48, containerEl.clientWidth - margin * 2, 96, 14)
-				.fill({ color: parseInt(COLORS.secondary.replace('#', ''), 16), alpha: 0.85 })
-				.stroke({ width: 4, color: parseInt(COLORS.primary.replace('#', ''), 16), alpha: 1.0 });
+			trackLane = new Graphics();
 			app.stage.addChild(trackLane);
 
-			// Target Zone Line
-			const targetZoneGfx = new Graphics()
-				.roundRect(-30, -30, 60, 60, 10)
-				.fill({ color: parseInt(COLORS.primary.replace('#', ''), 16), alpha: 0.25 })
-				.stroke({ width: 4, color: parseInt(COLORS.accent.replace('#', ''), 16), alpha: 1.0 });
-			const laserLineGfx = new Graphics()
-				.rect(-2, -48, 4, 96)
-				.fill({ color: parseInt(COLORS.primary.replace('#', ''), 16), alpha: 1.0 });
+			targetZonesContainer = new Container();
+			app.stage.addChild(targetZonesContainer);
 
-			const hitLineContainer = new Container();
-			hitLineContainer.addChild(targetZoneGfx);
-			hitLineContainer.addChild(laserLineGfx);
-			hitLineContainer.position.set(hitLineX, yCenter);
-			app.stage.addChild(hitLineContainer);
+			laserLine = new Graphics();
+			app.stage.addChild(laserLine);
 
-			// Note Mask & Container
 			noteContainer = new Container();
-			const maskGfx = new Graphics()
-				.roundRect(margin, yCenter - 48, containerEl.clientWidth - margin * 2, 96, 14)
-				.fill({ color: 0xffffff });
+			maskGfx = new Graphics();
 			app.stage.addChild(maskGfx);
 			noteContainer.mask = maskGfx;
 			app.stage.addChild(noteContainer);
 
+			redrawGraphics(totalLanes, containerEl.clientWidth);
+
 			const renderLoop = () => {
-				if (app && noteContainer) {
-					updatePreviewNotes(app, noteContainer, hitLineX, yCenter);
+				if (app && noteContainer && containerEl) {
+					const hitLineX = containerEl.clientWidth * 0.4;
+					updatePreviewNotes(app, noteContainer, hitLineX);
 				}
 				animId = requestAnimationFrame(renderLoop);
 			};
@@ -147,6 +197,7 @@
 		return () => {
 			if (animId) cancelAnimationFrame(animId);
 			window.removeEventListener('resize', handleResize);
+			effectUnsub();
 			if (app) {
 				app.destroy(true);
 				app = null;
@@ -154,11 +205,15 @@
 		};
 	});
 
-	function updatePreviewNotes(app: Application, container: Container, hitLineX: number, yCenter: number) {
+	function updatePreviewNotes(app: Application, container: Container, hitLineX: number) {
 		for (const node of nodePool) {
 			node.active = false;
 			node.container.visible = false;
 		}
+
+		const height = app.screen.height;
+		const yCenter = height / 2;
+		const laneSpacing = 35;
 
 		const currentTimeMs = editor.currentTime * 1000;
 		const travelDistance = (app.screen.width + 60) - hitLineX;
@@ -179,8 +234,10 @@
 			const isSelected = editor.selectedIndex === noteObj.originalIndex;
 			const fingerColor = getFingerColorForKey(noteObj.char);
 
+			const laneY = yCenter + ((noteObj.laneIndex ?? 0) - (totalLanes - 1) / 2) * laneSpacing;
+
 			const node = acquireNode(container, noteObj.char, fingerColor, isSelected);
-			node.container.position.set(noteX, yCenter);
+			node.container.position.set(noteX, laneY);
 		}
 	}
 </script>
@@ -195,5 +252,5 @@
 			Vitesse: {GAME.noteSpeed} px/s
 		</span>
 	</div>
-	<div bind:this={containerEl} class="w-full h-[140px] relative overflow-hidden rounded-lg"></div>
+	<div bind:this={containerEl} style="height: {140 + (totalLanes - 1) * 35}px" class="w-full relative overflow-hidden rounded-lg"></div>
 </div>

@@ -12,6 +12,7 @@ const SCORE = {
 export interface HitResult {
 	rating: 'perfect' | 'great' | 'good';
 	deltaMs: number;
+	laneIndex: number;
 }
 
 /**
@@ -32,12 +33,13 @@ export class GameState {
 	public processedIndices: Set<number> = new Set();
 	public nextNoteIndex: number = 0;
 	public totalNotes: number = 0;
+	public totalLanes: number = 1;
 
 	public onMissCallback?: (note: PooledNote, comboBefore: number) => void;
 	
 	public timingWindows: typeof TIMING_MODES[LeniencyMode];
 
-	constructor(manifest: Manifest, unlockedKeys: string[] = ['f', 'j'], leniencyMode: LeniencyMode = 'normal') {
+	constructor(manifest: Manifest, unlockedKeys: string[] = ['f', 'j'], leniencyMode: LeniencyMode = 'normal', noteSpeed: number = 400) {
 		this.timingWindows = TIMING_MODES[leniencyMode];
 		const availableKeys = unlockedKeys.length > 0 ? unlockedKeys : ['f', 'j'];
 
@@ -54,6 +56,27 @@ export class GameState {
 
 		adaptedHitObjects.sort((a, b) => a.time - b.time);
 
+		// Calculer l'attribution des lignes/lanes pour éviter le chevauchement visuel des notes proches
+		const laneThresholdMs = Math.max(150, Math.min(300, (80 / noteSpeed) * 1000));
+		const activeLanes: number[] = [];
+		let maxLane = 0;
+
+		for (const obj of adaptedHitObjects) {
+			let assignedLane = 0;
+			while (assignedLane < activeLanes.length) {
+				if (obj.time - activeLanes[assignedLane] >= laneThresholdMs) {
+					break;
+				}
+				assignedLane++;
+			}
+			activeLanes[assignedLane] = obj.time;
+			(obj as any).laneIndex = assignedLane;
+			if (assignedLane > maxLane) {
+				maxLane = assignedLane;
+			}
+		}
+
+		this.totalLanes = maxLane + 1;
 		this.manifest = { ...manifest, hitObjects: adaptedHitObjects };
 		this.totalNotes = this.manifest.hitObjects.length;
 		this.nextNoteIndex = 0;
@@ -123,8 +146,9 @@ export class GameState {
 			this.score = Math.floor(1_000_000 * (this.rawScore / this.maxPossibleRawScore));
 		}
 		
+		const laneIndex = closest.laneIndex ?? 0;
 		pool.release(closest);
-		return { rating, deltaMs: rawDelta };
+		return { rating, deltaMs: rawDelta, laneIndex };
 	}
 
 	/**

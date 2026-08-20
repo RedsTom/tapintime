@@ -96,7 +96,7 @@ export class Engine {
 		noteSpeed: number,
 		callbacks: EngineCallbacks
 	) {
-		this.state = new GameState(manifest, unlockedKeys, leniencyMode);
+		this.state = new GameState(manifest, unlockedKeys, leniencyMode, noteSpeed);
 		this.layout = layout;
 		this.audioOffsetMs = audioOffsetMs;
 		this.visualOffsetMs = visualOffsetMs;
@@ -126,7 +126,7 @@ export class Engine {
 			autoDensity: true
 		});
 
-		this.renderer = new Renderer(this.app, this.noteSpeed);
+		this.renderer = new Renderer(this.app, this.state.totalLanes, this.noteSpeed);
 		
 		// Pré-allouer et chauffer le pool de notes pour éviter tout freeze au spawn
 		const requiredPoolSize = Math.max(
@@ -306,7 +306,7 @@ export class Engine {
 		const hitResult = this.state.hitNote(layoutKey.char, adjustedTimeMs, this.renderer.pool);
 
 		if (hitResult) {
-			const { rating, deltaMs } = hitResult;
+			const { rating, deltaMs, laneIndex } = hitResult;
 			const color =
 				rating === 'perfect'
 					? parseInt(COLORS.perfect.replace('#', ''), 16)
@@ -314,7 +314,9 @@ export class Engine {
 						? parseInt(COLORS.great.replace('#', ''), 16)
 						: parseInt(COLORS.good.replace('#', ''), 16);
 
-			this.renderer.spawnHitSpark(this.renderer.hitLineX, this.app!.screen.height * 0.38, color);
+			const yCenter = this.app!.screen.height * 0.38;
+			const hitY = this.renderer.getLaneY(laneIndex, this.state.totalLanes, yCenter);
+			this.renderer.spawnHitSpark(this.renderer.hitLineX, hitY, color);
 
 			const finger = layoutKey.char || getFingerForKey(layoutKey.char, this.layout);
 

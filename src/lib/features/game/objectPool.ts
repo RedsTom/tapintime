@@ -10,6 +10,7 @@ export interface PooledNote {
 	missed: boolean;
 	char: string;
 	time: number;
+	laneIndex?: number;
 }
 
 /**
@@ -67,7 +68,7 @@ export class NotePool {
 	/**
 	 * Récupère ou instancie une note disponible depuis le pool.
 	 */
-	acquire(char: string, time: number, fingerColor: string = '#FFD500'): PooledNote {
+	acquire(char: string, time: number, fingerColor: string = '#FFD500', laneIndex: number = 0): PooledNote {
 		let note: PooledNote;
 		if (this.pool.length > 0) {
 			note = this.pool.pop()!;
@@ -79,6 +80,7 @@ export class NotePool {
 		note.char = char;
 		note.time = time;
 		note.missed = false;
+		note.laneIndex = laneIndex;
 		note.container.alpha = 1.0;
 		note.label.text = char.toUpperCase();
 

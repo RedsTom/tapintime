@@ -4,6 +4,7 @@ import type { ParsedOszPackage } from '../beatmap/types';
 import { saveCustomBeatmap, loadLayoutByNameOrId } from '$lib/storage';
 import { KEY_TIERS, getKeyTiersForLayout } from '$lib/progression';
 import type { Layout } from '$lib/schemas/titl';
+import { GAME } from '$lib/tokens';
 
 export type BeatSnapFraction = '1/1' | '1/2' | '1/4' | '1/8' | '1/16';
 
@@ -113,10 +114,10 @@ export class BeatmapEditorState {
 	 * Renvoie la liste des notes ADAPTÉES EN DIRECT pour la prévisualisation du layout et du palier.
 	 * Ne modifie en AUCUN CAS le tableau brut hitObjects !
 	 */
-	public getAdaptedHitObjects(): { time: number; char: string; originalIndex: number }[] {
+	public getAdaptedHitObjects(): { time: number; char: string; originalIndex: number; laneIndex?: number }[] {
 		const targetKeys = this.getUnlockedKeyList();
 
-		return this.hitObjects.map((note, i) => {
+		const adapted = this.hitObjects.map((note, i) => {
 			let char = note.char.toLowerCase();
 
 			// Traduction de palier de déblocage (logique identique à GameState)
@@ -124,8 +125,28 @@ export class BeatmapEditorState {
 				char = targetKeys[i % targetKeys.length];
 			}
 
-			return { time: note.time, char, originalIndex: i };
+			return { time: note.time, char, originalIndex: i, laneIndex: 0 };
 		});
+
+		// Sort by time (just to be safe, though editor hitObjects should be sorted)
+		adapted.sort((a, b) => a.time - b.time);
+
+		// Calculate lane indices
+		const laneThresholdMs = Math.max(150, Math.min(300, (80 / GAME.noteSpeed) * 1000));
+		const activeLanes: number[] = [];
+		for (const obj of adapted) {
+			let assignedLane = 0;
+			while (assignedLane < activeLanes.length) {
+				if (obj.time - activeLanes[assignedLane] >= laneThresholdMs) {
+					break;
+				}
+				assignedLane++;
+			}
+			activeLanes[assignedLane] = obj.time;
+			obj.laneIndex = assignedLane;
+		}
+
+		return adapted;
 	}
 
 	/**

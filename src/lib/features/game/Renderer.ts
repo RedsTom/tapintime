@@ -25,14 +25,14 @@ export class Renderer {
 	private fingerColorCache: Map<string, string> = new Map();
 	private cachedLayout: Layout | null = null;
 
-	constructor(app: Application, noteSpeed: number = GAME.noteSpeed) {
+	constructor(app: Application, totalLanes: number = 1, noteSpeed: number = GAME.noteSpeed) {
 		this.app = app;
 		this.noteSpeed = noteSpeed;
 
 		this.hitSparks = new Container();
 		this.app.stage.addChild(this.hitSparks);
 
-		const { hitLine, noteContainer } = this.initGameGraphics();
+		const { hitLine, noteContainer } = this.initGameGraphics(totalLanes);
 		this.hitLine = hitLine;
 		this.noteContainer = noteContainer;
 
@@ -56,10 +56,11 @@ export class Renderer {
 		return this.app.screen.width * 0.4;
 	}
 
-	private initGameGraphics(): { hitLine: Container; noteContainer: Container } {
+	private initGameGraphics(totalLanes: number = 1): { hitLine: Container; noteContainer: Container } {
 		const yCenter = this.app.screen.height * 0.38;
 		const margin = 48;
-		const trackHeight = 110;
+		const laneSpacing = 50;
+		const trackHeight = 110 + (totalLanes - 1) * laneSpacing;
 		const trackRadius = 16;
 
 		// Piste de jeu Neo-Brutalism
@@ -78,15 +79,21 @@ export class Renderer {
 
 		// Zone de frappe et ligne laser
 		const hitLine = new Container();
-		const targetZoneGfx = new Graphics()
-			.roundRect(-38, -38, 76, 76, 12)
-			.fill({ color: parseInt(COLORS.primary.replace('#', ''), 16), alpha: 0.25 })
-			.stroke({ width: 4, color: parseInt(COLORS.accent.replace('#', ''), 16), alpha: 1.0 });
+		
+		for (let i = 0; i < totalLanes; i++) {
+			const laneYOffset = (i - (totalLanes - 1) / 2) * laneSpacing;
+			const targetZoneGfx = new Graphics()
+				.roundRect(-38, -38 + laneYOffset, 76, 76, 12)
+				.fill({ color: parseInt(COLORS.primary.replace('#', ''), 16), alpha: 0.25 })
+				.stroke({ width: 4, color: parseInt(COLORS.accent.replace('#', ''), 16), alpha: 1.0 });
+			hitLine.addChild(targetZoneGfx);
+		}
+
 		const laserLineGfx = new Graphics()
-			.rect(-3, -60, 6, 120)
+			.rect(-3, -trackHeight / 2, 6, trackHeight)
 			.fill({ color: parseInt(COLORS.primary.replace('#', ''), 16), alpha: 1.0 });
-		hitLine.addChild(targetZoneGfx);
 		hitLine.addChild(laserLineGfx);
+		
 		hitLine.position.set(this.hitLineX, yCenter);
 		this.app.stage.addChild(hitLine);
 
@@ -106,6 +113,15 @@ export class Renderer {
 		this.app.stage.addChild(noteContainer);
 
 		return { hitLine, noteContainer };
+	}
+
+	/**
+	 * Calcule la position Y pour une ligne/lane spécifique en fonction du nombre total de lanes.
+	 */
+	public getLaneY(laneIndex: number, totalLanes: number, yCenter: number): number {
+		if (totalLanes <= 1) return yCenter;
+		const laneSpacing = 50;
+		return yCenter + (laneIndex - (totalLanes - 1) / 2) * laneSpacing;
 	}
 
 	/**
@@ -194,7 +210,7 @@ export class Renderer {
 			const idx = state.nextNoteIndex;
 			const hitObj = state.manifest.hitObjects[idx];
 			const fingerColor = this.getCachedFingerColor(hitObj.char, layout);
-			const note = this.pool.acquire(hitObj.char, hitObj.time, fingerColor);
+			const note = this.pool.acquire(hitObj.char, hitObj.time, fingerColor, (hitObj as any).laneIndex || 0);
 			// Remarque: Pas besoin d'appeler noteContainer.addChild à chaque frame
 			// si note.container est déjà attaché de manière persistante lors de l'acquire.
 			state.processedIndices.add(idx);
@@ -210,7 +226,8 @@ export class Renderer {
 			const timeRemainingSec = (note.time - currentTimeMs) / 1000;
 			const targetX = this.hitLineX + timeRemainingSec * this.noteSpeed;
 
-			note.container.position.set(targetX, yCenter);
+			const laneY = this.getLaneY(note.laneIndex ?? 0, state.totalLanes, yCenter);
+			note.container.position.set(targetX, laneY);
 
 			// Détection des ratés (timing dépassé) sans faire disparaître la note immédiatement
 			if (!note.missed && currentTimeMs >= 0 && currentTimeMs - note.time > state.timingWindows.goodWindow) {
