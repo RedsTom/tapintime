@@ -93,22 +93,7 @@ export class BeatmapEditorState {
 		return this.hitObjects.map((note, i) => {
 			let char = note.char.toLowerCase();
 
-			// 1. Traduction physique de disposition (AZERTY <-> QWERTY)
-			if (this.selectedLayoutName === 'qwerty') {
-				if (char === 'a') char = 'q';
-				else if (char === 'z') char = 'w';
-				else if (char === 'q') char = 'a';
-				else if (char === 'w') char = 'z';
-				else if (char === 'm') char = ',';
-			} else if (this.selectedLayoutName === 'azerty') {
-				if (char === 'q') char = 'a';
-				else if (char === 'w') char = 'z';
-				else if (char === 'a') char = 'q';
-				else if (char === 'z') char = 'w';
-				else if (char === ',') char = 'm';
-			}
-
-			// 2. Traduction de palier de déblocage (logique identique à GameState)
+			// Traduction de palier de déblocage (logique identique à GameState)
 			if (targetKeys.length > 0 && !targetKeys.includes(char)) {
 				char = targetKeys[i % targetKeys.length];
 			}
@@ -194,6 +179,24 @@ export class BeatmapEditorState {
 	public stepPlayhead(direction: -1 | 1) {
 		const stepSec = this.getSnapIntervalMs() / 1000;
 		this.seekTo(this.currentTime + direction * stepSec);
+	}
+
+	/**
+	 * Sélectionne la note suivante ou précédente dans la liste des notes, et déplace la tête de lecture.
+	 */
+	public selectNextNote(direction: -1 | 1) {
+		if (this.hitObjects.length === 0) return;
+
+		if (this.selectedIndex === null) {
+			this.selectedIndex = direction === 1 ? 0 : this.hitObjects.length - 1;
+		} else {
+			this.selectedIndex = Math.max(0, Math.min(this.hitObjects.length - 1, this.selectedIndex + direction));
+		}
+
+		const selectedNote = this.hitObjects[this.selectedIndex];
+		if (selectedNote) {
+			this.seekTo(selectedNote.time / 1000);
+		}
 	}
 
 	/**

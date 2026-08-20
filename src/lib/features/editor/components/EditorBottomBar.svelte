@@ -74,7 +74,7 @@
 			onclick={onTestMap}
 			class="border-4 border-secondary bg-primary text-secondary px-6 py-2.5 rounded-lg font-black uppercase text-xs md:text-sm tracking-wider shadow-[4px_4px_0px_#ff3366] hover:translate-x-[2px] hover:translate-y-[2px] cursor-pointer transition-all flex items-center gap-2 shrink-0"
 		>
-			<PlaySquare class="w-5 h-5 fill-secondary" /> TESTER LA MAP (F5 / T)
+			<PlaySquare class="w-5 h-5 fill-secondary" /> TESTER LA MAP (F5)
 		</button>
 	</div>
 </div>

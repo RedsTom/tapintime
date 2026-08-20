@@ -73,17 +73,25 @@
 			editor.deleteNote();
 		} else if (e.code === 'ArrowLeft') {
 			e.preventDefault();
-			editor.stepPlayhead(-1);
+			if (e.shiftKey) {
+				editor.stepPlayhead(-1);
+			} else {
+				editor.selectNextNote(-1);
+			}
 		} else if (e.code === 'ArrowRight') {
 			e.preventDefault();
-			editor.stepPlayhead(1);
+			if (e.shiftKey) {
+				editor.stepPlayhead(1);
+			} else {
+				editor.selectNextNote(1);
+			}
 		} else if (e.code === 'KeyZ' && (e.ctrlKey || e.metaKey)) {
 			e.preventDefault();
 			editor.undo();
 		} else if (e.code === 'KeyY' && (e.ctrlKey || e.metaKey)) {
 			e.preventDefault();
 			editor.redo();
-		} else if (e.code === 'F5' || (e.code === 'KeyT' && !e.ctrlKey && !e.altKey)) {
+		} else if (e.code === 'F5') {
 			e.preventDefault();
 			handleTestMap();
 		} else if (/^Key[A-Z]$/.test(e.code)) {
@@ -244,7 +252,11 @@
 						<span class="text-primary font-black">Touche Note</span>
 					</div>
 					<div class="flex justify-between border-b border-secondary/15 pb-0.5">
-						<span class="text-text-dim">Flèches ← / →</span>
+						<span class="text-text-dim">← / →</span>
+						<span class="text-primary font-black">Changer Note</span>
+					</div>
+					<div class="flex justify-between border-b border-secondary/15 pb-0.5">
+						<span class="text-text-dim">Shift + ← / →</span>
 						<span class="text-primary font-black">Pas Snap</span>
 					</div>
 					<div class="flex justify-between border-b border-secondary/15 pb-0.5">
@@ -252,7 +264,7 @@
 						<span class="text-accent font-black">Supprimer</span>
 					</div>
 					<div class="flex justify-between">
-						<span class="text-text-dim">T / F5</span>
+						<span class="text-text-dim">F5</span>
 						<span class="text-primary font-black">Tester Map</span>
 					</div>
 				</div>
