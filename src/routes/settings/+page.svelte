@@ -217,6 +217,18 @@
 					{/if}
 				</div>
 
+				<!-- Layout Familiarity -->
+				<div class="pt-3 border-t-2 border-secondary/20 flex flex-col gap-2">
+					<span class="text-xs font-black uppercase tracking-wider text-text-dim text-left">Niveau de familiarité</span>
+					<span class="text-[9px] font-black uppercase text-text-dim/70 -mt-1 leading-tight text-left">Sélectionnez le niveau pour lequel vous êtes à l'aise. Les touches de ce niveau et des niveaux inférieurs seront débloquées d'office.</span>
+					<select bind:value={settings.layoutFamiliarity} onchange={updateSettings} class="w-full bg-secondary/35 border-2 border-secondary text-text font-black uppercase text-xs p-2 rounded-lg outline-none focus:border-primary">
+						{#each Array.from({length: 15}, (_, i) => i + 1) as tier}
+							<option value={tier}>Niveau {tier}</option>
+						{/each}
+					</select>
+				</div>
+
+
 				<!-- Import Layout Button -->
 				<div class="pt-3 border-t-2 border-secondary/20 flex flex-col gap-2">
 					<label class="w-full border-4 border-secondary bg-primary text-secondary py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 font-black uppercase text-xs shadow-[3px_3px_0px_0px_#f9564f] hover:translate-x-[1px] hover:translate-y-[1px] cursor-pointer transition-all">
@@ -241,6 +253,30 @@
 					
 					<Slider label="Offset Audio (ms)" min={-200} max={200} step={5} bind:value={settings.audioOffsetMs} onchange={updateSettings} />
 					<Slider label="Offset Visuel (ms)" min={-200} max={200} step={5} bind:value={settings.visualOffsetMs} onchange={updateSettings} />
+
+					<div class="w-full h-px bg-secondary/30 mt-1 mb-1"></div>
+
+					<!-- Leniency Mode -->
+					<div class="flex flex-col gap-2">
+						<span class="text-xs font-black uppercase tracking-wider text-text-dim text-left">Tolérance de Timing</span>
+						<div class="grid grid-cols-3 gap-2 w-full">
+							{#each ['facile', 'normal', 'strict'] as leniency}
+								{@const selected = settings.leniencyMode === leniency}
+								<button
+									onclick={() => { settings!.leniencyMode = leniency as any; updateSettings(); }}
+									class="
+										border-2 border-secondary py-2 rounded-lg font-black uppercase text-[10px] transition-all select-none cursor-pointer
+										{selected
+											? 'bg-primary text-secondary shadow-[2px_2px_0px_0px_#f9564f]'
+											: 'bg-secondary/35 text-white hover:bg-secondary/50 shadow-none'
+										}
+									"
+								>
+									{leniency}
+								</button>
+							{/each}
+						</div>
+					</div>
 				</div>
 
 				<div class="flex flex-col gap-3 bg-secondary/15 border-2 border-secondary p-4 rounded-xl">
@@ -279,7 +315,7 @@
 						<VirtualKeyboard 
 							layout={previewLayout} 
 							{pressedKeys} 
-							unlockedKeys={new Set(getUnlockedKeys(progression?.xp ?? 0, previewLayout))}
+							unlockedKeys={new Set(getUnlockedKeys(progression?.xp ?? 0, previewLayout, settings.layoutFamiliarity))}
 							scale={settings.keyboardScale} 
 						/>
 					</div>
