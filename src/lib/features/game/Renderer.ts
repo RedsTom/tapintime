@@ -15,6 +15,7 @@ export class Renderer {
 	public hitLine: Container;
 	public noteContainer: Container;
 	public pool: NotePool;
+	public noteSpeed: number;
 
 	// Spark pooling to eliminate WebGL buffer reallocation and GC stutters
 	private sparkPool: Graphics[] = [];
@@ -24,8 +25,9 @@ export class Renderer {
 	private fingerColorCache: Map<string, string> = new Map();
 	private cachedLayout: Layout | null = null;
 
-	constructor(app: Application) {
+	constructor(app: Application, noteSpeed: number = GAME.noteSpeed) {
 		this.app = app;
+		this.noteSpeed = noteSpeed;
 
 		this.hitSparks = new Container();
 		this.app.stage.addChild(this.hitSparks);
@@ -182,7 +184,7 @@ export class Renderer {
 	private updateNotes(state: GameState, currentTimeMs: number, layout?: Layout | null) {
 		const yCenter = this.app.screen.height * 0.38;
 		const travelDistance = (this.app.screen.width + 80) - this.hitLineX;
-		const travelTimeMs = (travelDistance / GAME.noteSpeed) * 1000;
+		const travelTimeMs = (travelDistance / this.noteSpeed) * 1000;
 
 		// Spawning O(1) des notes à venir
 		while (
@@ -206,7 +208,7 @@ export class Renderer {
 			if (!note || !note.active) continue;
 
 			const timeRemainingSec = (note.time - currentTimeMs) / 1000;
-			const targetX = this.hitLineX + timeRemainingSec * GAME.noteSpeed;
+			const targetX = this.hitLineX + timeRemainingSec * this.noteSpeed;
 
 			note.container.position.set(targetX, yCenter);
 

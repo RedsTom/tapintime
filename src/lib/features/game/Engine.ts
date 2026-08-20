@@ -76,6 +76,7 @@ export class Engine {
 
 	private audioOffsetMs: number;
 	private visualOffsetMs: number;
+	private noteSpeed: number;
 	private callbacks: EngineCallbacks;
 	private smoothClock = new SmoothClock();
 
@@ -92,12 +93,14 @@ export class Engine {
 		audioOffsetMs: number,
 		visualOffsetMs: number,
 		leniencyMode: LeniencyMode,
+		noteSpeed: number,
 		callbacks: EngineCallbacks
 	) {
 		this.state = new GameState(manifest, unlockedKeys, leniencyMode);
 		this.layout = layout;
 		this.audioOffsetMs = audioOffsetMs;
 		this.visualOffsetMs = visualOffsetMs;
+		this.noteSpeed = noteSpeed;
 		this.callbacks = callbacks;
 
 		this.state.onMissCallback = (note, comboBefore) => {
@@ -123,7 +126,7 @@ export class Engine {
 			autoDensity: true
 		});
 
-		this.renderer = new Renderer(this.app);
+		this.renderer = new Renderer(this.app, this.noteSpeed);
 		
 		// Pré-allouer et chauffer le pool de notes pour éviter tout freeze au spawn
 		const requiredPoolSize = Math.max(

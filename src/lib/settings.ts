@@ -4,6 +4,7 @@ export interface UserSettings {
 	showKeyboard: boolean;
 	keyboardScale: number;
 	masterVolume: number;
+	effectsVolume: number;
 	noteSpeed: number;
 	activeLayout: string;
 	backgroundParallax: boolean;
@@ -19,6 +20,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
 	showKeyboard: true,
 	keyboardScale: 1.0,
 	masterVolume: 80,
+	effectsVolume: 80,
 	noteSpeed: 400,
 	activeLayout: 'azerty',
 	backgroundParallax: true,

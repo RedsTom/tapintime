@@ -5,6 +5,7 @@ let audioBuffer: AudioBuffer | null = null;
 let audioZeroTime = 0; // AudioContext.currentTime corresponding to song time 0
 let pausedTimeSec = 0;
 let masterVolume = 0.8; // 0.0 to 1.0
+let effectsVolume = 0.8; // 0.0 to 1.0
 
 export function setMasterVolume(vol: number): void {
 	masterVolume = Math.max(0, Math.min(1, vol));
@@ -13,6 +14,10 @@ export function setMasterVolume(vol: number): void {
 		// Update running music volume smoothly
 		gainNode.gain.linearRampToValueAtTime(masterVolume, ctx.currentTime + 0.1);
 	}
+}
+
+export function setEffectsVolume(vol: number): void {
+	effectsVolume = Math.max(0, Math.min(1, vol));
 }
 
 
@@ -135,7 +140,7 @@ export function playHitSound(): void {
 		osc.frequency.setValueAtTime(900, ctx.currentTime);
 		osc.frequency.exponentialRampToValueAtTime(250, ctx.currentTime + 0.035);
 
-		gain.gain.setValueAtTime(0.45 * masterVolume, ctx.currentTime);
+		gain.gain.setValueAtTime(0.45 * masterVolume * effectsVolume, ctx.currentTime);
 		gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.035);
 
 		osc.connect(gain);
@@ -161,7 +166,7 @@ export function playComboBreakSound(): void {
 		osc.frequency.setValueAtTime(220, ctx.currentTime);
 		osc.frequency.linearRampToValueAtTime(50, ctx.currentTime + 0.22);
 
-		gain.gain.setValueAtTime(0.5 * masterVolume, ctx.currentTime);
+		gain.gain.setValueAtTime(0.5 * masterVolume * effectsVolume, ctx.currentTime);
 		gain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 0.22);
 
 		osc.connect(gain);
@@ -190,7 +195,7 @@ export function playUnlockFanfareSound(): void {
 			osc.frequency.setValueAtTime(freq, startTime);
 
 			gain.gain.setValueAtTime(0, startTime);
-			gain.gain.linearRampToValueAtTime(0.4 * masterVolume, startTime + 0.02);
+			gain.gain.linearRampToValueAtTime(0.4 * masterVolume * effectsVolume, startTime + 0.02);
 			gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.2);
 
 			osc.connect(gain);
