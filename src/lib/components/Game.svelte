@@ -27,7 +27,6 @@
 	let engine = $state<Engine | null>(null);
 	let settings = $state<UserSettings | null>(null);
 	let isLoaded = $state(false);
-	let requiresClickToStart = $state(false);
 
 	// HUD State
 	let accuracy = $state(100);
@@ -74,23 +73,12 @@
 
 		await loadAudio(audioBlob);
 
-		const isRunning = getAudioContext().state === 'running';
-		if (!isRunning) {
-			requiresClickToStart = true;
-		} else {
-			isLoaded = true;
-			showKeySelector = true;
-		}
-	});
-
-	async function handleUserStart() {
-		requiresClickToStart = false;
-		await ensureAudioContextRunning();
 		isLoaded = true;
 		showKeySelector = true;
-	}
+	});
 
 	async function initEngineAndStart() {
+		await ensureAudioContextRunning();
 		if (canvasEl && !engine) {
 			showKeySelector = false;
 			const instance = new Engine(
@@ -205,24 +193,8 @@
 <div class="relative w-full h-screen overflow-hidden bg-bg select-none">
 	<canvas bind:this={canvasEl} class="w-full h-full block absolute inset-0 z-0"></canvas>
 
-	<!-- Overlay si l'audio nécessite une interaction utilisateur -->
-	{#if requiresClickToStart}
-		<div class="absolute inset-0 z-40 bg-bg/95 flex flex-col items-center justify-center p-6 text-center select-none backdrop-blur-sm">
-			<div class="bg-surface border-4 border-secondary p-8 rounded-xl shadow-[8px_8px_0px_#1a0033] max-w-md flex flex-col items-center gap-6">
-				<div class="text-2xl font-black uppercase text-primary tracking-wider">Audio prêt</div>
-				<p class="text-xs font-bold text-text-dim uppercase tracking-wider">Cliquez ci-dessous pour démarrer le morceau et lancer le décompte.</p>
-				<button
-					onclick={handleUserStart}
-					class="border-4 border-secondary bg-primary text-secondary px-6 py-3 rounded-lg font-black uppercase text-sm md:text-base shadow-[4px_4px_0px_#ff3366] hover:translate-x-[2px] hover:translate-y-[2px] cursor-pointer transition-all flex items-center gap-2"
-				>
-					<Play class="w-5 h-5 fill-secondary" /> CLIQUER POUR DÉMARRER
-				</button>
-			</div>
-		</div>
-	{/if}
-
 	<!-- Overlay de préchargement -->
-	{#if !isLoaded && !requiresClickToStart}
+	{#if !isLoaded}
 		<div class="absolute inset-0 z-30 bg-bg flex items-center justify-center">
 			<div class="flex flex-col items-center gap-3">
 				<div class="w-12 h-12 rounded-full border-4 border-t-accent border-secondary animate-spin"></div>
@@ -231,14 +203,14 @@
 		</div>
 	{/if}
 
-	<!-- Overlay de sélection des touches actives -->
+	<!-- Overlay de sélection des touches actives (Prêt à démarrer) -->
 	{#if showKeySelector && isLoaded}
 		<div class="absolute inset-0 z-40 bg-bg/95 flex flex-col items-center justify-center p-6 text-center select-none backdrop-blur-sm text-text">
 			<div class="bg-surface border-4 border-secondary p-8 rounded-xl shadow-[8px_8px_0px_#1a0033] max-w-2xl flex flex-col items-center gap-6">
 				<div class="flex flex-col gap-1.5">
-					<div class="text-2xl font-black uppercase text-primary tracking-wider">Configuration des Touches</div>
+					<div class="text-2xl font-black uppercase text-primary tracking-wider">Prêt à Démarrer</div>
 					<p class="text-xs font-bold text-text-dim uppercase tracking-wider">
-						Sélectionnez les touches que vous souhaitez activer pour ce niveau ({selectedKeys.size} actives).
+						Configurez vos touches actives avant de lancer le niveau ({selectedKeys.size} actives).
 					</p>
 					<p class="text-[10px] font-black text-accent uppercase tracking-widest">
 						(Cliquez sur les touches pour les activer/désactiver — Minimum 2 touches)
