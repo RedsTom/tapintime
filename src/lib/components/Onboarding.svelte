@@ -27,7 +27,7 @@
 	const layouts = [
 		{ id: 'azerty', name: 'AZERTY', desc: 'Standard FR' },
 		{ id: 'qwerty', name: 'QWERTY', desc: 'Standard EN' },
-		{ id: 'ergol', name: 'Ergo-L', desc: 'Ergonomique FR' }
+		{ id: 'ergo-l', name: 'Ergo-L', desc: 'Ergonomique FR' }
 	];
 
 	function nextStep() {

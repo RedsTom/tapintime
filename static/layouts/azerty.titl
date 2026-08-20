@@ -5,8 +5,8 @@
 		{
 			"name": "Base",
 			"keys": [
-				{ "keyCode": "KeyA", "char": "a", "finger": "L_PINKY", "x": 0, "y": 0 },
-				{ "keyCode": "KeyZ", "char": "z", "finger": "L_RING", "x": 1, "y": 0 },
+				{ "keyCode": "KeyQ", "char": "a", "finger": "L_PINKY", "x": 0, "y": 0 },
+				{ "keyCode": "KeyW", "char": "z", "finger": "L_RING", "x": 1, "y": 0 },
 				{ "keyCode": "KeyE", "char": "e", "finger": "L_MIDDLE", "x": 2, "y": 0 },
 				{ "keyCode": "KeyR", "char": "r", "finger": "L_INDEX", "x": 3, "y": 0 },
 				{ "keyCode": "KeyT", "char": "t", "finger": "L_INDEX", "x": 4, "y": 0 },
@@ -16,7 +16,7 @@
 				{ "keyCode": "KeyO", "char": "o", "finger": "R_RING", "x": 8, "y": 0 },
 				{ "keyCode": "KeyP", "char": "p", "finger": "R_PINKY", "x": 9, "y": 0 },
 
-				{ "keyCode": "KeyQ", "char": "q", "finger": "L_PINKY", "x": 0, "y": 1 },
+				{ "keyCode": "KeyA", "char": "q", "finger": "L_PINKY", "x": 0, "y": 1 },
 				{ "keyCode": "KeyS", "char": "s", "finger": "L_RING", "x": 1, "y": 1 },
 				{ "keyCode": "KeyD", "char": "d", "finger": "L_MIDDLE", "x": 2, "y": 1 },
 				{ "keyCode": "KeyF", "char": "f", "finger": "L_INDEX", "x": 3, "y": 1 },
@@ -25,18 +25,18 @@
 				{ "keyCode": "KeyJ", "char": "j", "finger": "R_INDEX", "x": 6, "y": 1 },
 				{ "keyCode": "KeyK", "char": "k", "finger": "R_MIDDLE", "x": 7, "y": 1 },
 				{ "keyCode": "KeyL", "char": "l", "finger": "R_RING", "x": 8, "y": 1 },
-				{ "keyCode": "KeyM", "char": "m", "finger": "R_PINKY", "x": 9, "y": 1 },
+				{ "keyCode": "Semicolon", "char": "m", "finger": "R_PINKY", "x": 9, "y": 1 },
 
-				{ "keyCode": "KeyW", "char": "w", "finger": "L_PINKY", "x": 0, "y": 2 },
+				{ "keyCode": "KeyZ", "char": "w", "finger": "L_PINKY", "x": 0, "y": 2 },
 				{ "keyCode": "KeyX", "char": "x", "finger": "L_RING", "x": 1, "y": 2 },
 				{ "keyCode": "KeyC", "char": "c", "finger": "L_MIDDLE", "x": 2, "y": 2 },
 				{ "keyCode": "KeyV", "char": "v", "finger": "L_INDEX", "x": 3, "y": 2 },
 				{ "keyCode": "KeyB", "char": "b", "finger": "L_INDEX", "x": 4, "y": 2 },
 				{ "keyCode": "KeyN", "char": "n", "finger": "R_INDEX", "x": 5, "y": 2 },
-				{ "keyCode": "Comma", "char": ",", "finger": "R_INDEX", "x": 6, "y": 2 },
-				{ "keyCode": "Semicolon", "char": ";", "finger": "R_MIDDLE", "x": 7, "y": 2 },
-				{ "keyCode": "Colon", "char": ":", "finger": "R_RING", "x": 8, "y": 2 },
-				{ "keyCode": "Exclamation", "char": "!", "finger": "R_PINKY", "x": 9, "y": 2 }
+				{ "keyCode": "KeyM", "char": ",", "finger": "R_INDEX", "x": 6, "y": 2 },
+				{ "keyCode": "Comma", "char": ";", "finger": "R_MIDDLE", "x": 7, "y": 2 },
+				{ "keyCode": "Period", "char": ":", "finger": "R_RING", "x": 8, "y": 2 },
+				{ "keyCode": "Slash", "char": "!", "finger": "R_PINKY", "x": 9, "y": 2 }
 			]
 		}
 	],

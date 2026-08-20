@@ -30,8 +30,12 @@
 				Ce pack contient {oszPackage.difficulties.length} difficultés. Choisissez celle à importer :
 			</p>
 
-			<div class="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
-				{#each oszPackage.difficulties as diff}
+			<div class="bg-[#FFc145]/20 border-2 border-[#ffc145] text-[#ffc145] p-3 rounded-lg text-[10px] font-black uppercase mt-1">
+				⚠️ Attention : Ces cartes (provenant d'osu!) n'ont pas été conçues pour TapInTime. Elles peuvent être extrêmement denses et difficiles. Privilégiez les difficultés avec le moins de notes pour commencer !
+			</div>
+
+			<div class="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1 mt-2">
+				{#each oszPackage.difficulties.slice().sort((a, b) => a.parsed.hitObjects.length - b.parsed.hitObjects.length) as diff}
 					<button
 						onclick={() => onSelectDifficulty(diff)}
 						class="bg-surface hover:bg-secondary/40 border-2 border-secondary p-3 rounded-lg flex items-center justify-between text-left transition-all cursor-pointer group"

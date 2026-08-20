@@ -30,7 +30,7 @@
 			>
 				<option value="azerty">AZERTY</option>
 				<option value="qwerty">QWERTY</option>
-				<option value="ergol">ERGOL</option>
+				<option value="ergo-l">ERGO-L</option>
 			</select>
 		</div>
 

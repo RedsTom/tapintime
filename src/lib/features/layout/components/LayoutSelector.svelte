@@ -14,7 +14,7 @@
 	const layouts = [
 		{ name: 'azerty', label: 'AZERTY', desc: 'Français standard' },
 		{ name: 'qwerty', label: 'QWERTY', desc: 'International' },
-		{ name: 'ergol', label: 'Ergo-L', desc: 'Ergonomique FR' }
+		{ name: 'ergo-l', label: 'Ergo-L', desc: 'Ergonomique FR' }
 	];
 
 	const {

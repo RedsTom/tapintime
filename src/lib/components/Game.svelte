@@ -56,7 +56,7 @@
 	onMount(async () => {
 		settings = await loadSettings();
 		const prog = await loadProgression();
-		unlockedKeys = new Set(getUnlockedKeys(prog.xp));
+		unlockedKeys = new Set(getUnlockedKeys(prog.xp, layout));
 
 		await loadAudio(audioBlob);
 

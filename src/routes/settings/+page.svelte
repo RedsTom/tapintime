@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { COLORS, SHADOW, SPACING } from '$lib/tokens';
 	import { loadSettings, saveSettings, type UserSettings } from '$lib/settings';
-	import { loadProgression, type ProgressionData } from '$lib/progression';
+	import { loadProgression, getUnlockedKeys, type ProgressionData } from '$lib/progression';
 	import VirtualKeyboard from '$lib/components/VirtualKeyboard.svelte';
 	import { LayoutSchema, type Layout } from '$lib/schemas/titl';
 	import { loadLayoutByNameOrId, saveCustomLayout, getCustomLayouts, type CustomLayoutItem } from '$lib/storage';
@@ -263,7 +263,12 @@
 
 				{#if settings.showKeyboard}
 					<div class="w-full flex justify-center py-2 max-w-full overflow-x-auto scrollbar-none">
-						<VirtualKeyboard layout={previewLayout} {pressedKeys} scale={settings.keyboardScale} />
+						<VirtualKeyboard 
+							layout={previewLayout} 
+							{pressedKeys} 
+							unlockedKeys={new Set(getUnlockedKeys(progression?.xp ?? 0, previewLayout))}
+							scale={settings.keyboardScale} 
+						/>
 					</div>
 				{:else}
 					<div class="border-2 border-dashed border-secondary/50 bg-secondary/15 py-8 rounded-lg text-center font-black text-text-dim text-xs uppercase tracking-wider">
