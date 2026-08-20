@@ -1,9 +1,9 @@
 import { Application, Container, Graphics } from 'pixi.js';
 import { COLORS, GAME } from '$lib/tokens';
 import { NotePool } from './objectPool';
-import { getFingerColorForKey } from '$lib/fingerColors';
 import type { GameState } from './GameState';
 import type { Layout } from '$lib/schemas/titl';
+import { getFingerColor, getFingerForKey } from '$lib/features/layout/fingerColors';
 
 /**
  * Coordonnateur de rendu Canvas 2D / WebGL via PixiJS.
@@ -16,6 +16,14 @@ export class Renderer {
 	public noteContainer: Container;
 	public pool: NotePool;
 
+	// Spark pooling to eliminate WebGL buffer reallocation and GC stutters
+	private sparkPool: Graphics[] = [];
+	private activeSparks: { el: Graphics; life: number }[] = [];
+
+	// Layout colors caching for fast O(1) rendering lookups
+	private fingerColorCache: Map<string, string> = new Map();
+	private cachedLayout: Layout | null = null;
+
 	constructor(app: Application) {
 		this.app = app;
 
@@ -27,6 +35,16 @@ export class Renderer {
 		this.noteContainer = noteContainer;
 
 		this.pool = new NotePool(this.noteContainer, GAME.objectPoolSize);
+
+		// Pre-populate spark pool (15 sparks should be plenty for simultaneous hits)
+		for (let i = 0; i < 15; i++) {
+			const spark = new Graphics()
+				.roundRect(-38, -38, 76, 76, 12)
+				.fill({ color: 0xFFFFFF }); // Base white for easy tinting
+			spark.visible = false;
+			this.hitSparks.addChild(spark);
+			this.sparkPool.push(spark);
+		}
 	}
 
 	/**
@@ -89,33 +107,79 @@ export class Renderer {
 	}
 
 	/**
-	 * Déclenche une étincelle/effet visuel lors d'une frappe réussie.
+	 * Résout la couleur de doigt d'une touche de manière O(1) grâce au cache.
 	 */
-	public spawnHitSpark(x: number, y: number, _color: number) {
-		const pulse = new Graphics()
-			.roundRect(-38, -38, 76, 76, 12)
-			.fill({ color: 0xFFD500, alpha: 1 });
-		pulse.position.set(x, y);
-		this.hitSparks.addChild(pulse);
-
-		let life = 1;
-		const ticker = () => {
-			life -= 0.12;
-			if (life <= 0) {
-				this.app.ticker.remove(ticker);
-				this.hitSparks.removeChild(pulse);
-				pulse.destroy();
-				return;
+	private getCachedFingerColor(char: string, layout?: Layout | null): string {
+		if (!layout) return '#FFD500';
+		if (this.cachedLayout !== layout) {
+			this.cachedLayout = layout;
+			this.fingerColorCache.clear();
+			for (const layer of layout.layers) {
+				for (const key of layer.keys) {
+					const col = getFingerColor(key.finger);
+					this.fingerColorCache.set(key.char.toLowerCase(), col);
+				}
 			}
-			pulse.alpha = life;
-		};
-		this.app.ticker.add(ticker);
+			if (layout.thumbKeys) {
+				for (const key of layout.thumbKeys) {
+					const col = getFingerColor(key.finger);
+					this.fingerColorCache.set(' ', col);
+					this.fingerColorCache.set('space', col);
+				}
+			}
+		}
+		return this.fingerColorCache.get(char.toLowerCase()) ?? '#FFD500';
+	}
+
+	/**
+	 * Déclenche une étincelle/effet visuel lors d'une frappe réussie en utilisant le pool.
+	 */
+	public spawnHitSpark(x: number, y: number, color: number) {
+		let spark = this.sparkPool.pop();
+		if (!spark) {
+			spark = new Graphics()
+				.roundRect(-38, -38, 76, 76, 12)
+				.fill({ color: 0xFFFFFF });
+			this.hitSparks.addChild(spark);
+		}
+
+		spark.position.set(x, y);
+		spark.tint = color;
+		spark.alpha = 1.0;
+		spark.visible = true;
+
+		this.activeSparks.push({ el: spark, life: 1.0 });
+	}
+
+	/**
+	 * Met à jour le défilement et l'état des éléments à chaque frame (Centralisé pour la performance).
+	 */
+	public update(state: GameState, currentTimeMs: number, layout?: Layout | null) {
+		this.updateNotes(state, currentTimeMs, layout);
+		this.updateSparks();
+	}
+
+	/**
+	 * Animate existing sparks in a single tick to avoid multi-ticker overhead and closures.
+	 */
+	private updateSparks() {
+		for (let i = this.activeSparks.length - 1; i >= 0; i--) {
+			const sparkObj = this.activeSparks[i];
+			sparkObj.life -= 0.12;
+			if (sparkObj.life <= 0) {
+				sparkObj.el.visible = false;
+				this.sparkPool.push(sparkObj.el);
+				this.activeSparks.splice(i, 1);
+			} else {
+				sparkObj.el.alpha = sparkObj.life;
+			}
+		}
 	}
 
 	/**
 	 * Fait défiler les notes et gère leur apparition / disparition à chaque frame.
 	 */
-	public updateNotes(state: GameState, currentTimeMs: number, layout?: Layout | null) {
+	private updateNotes(state: GameState, currentTimeMs: number, layout?: Layout | null) {
 		const yCenter = this.app.screen.height * 0.38;
 		const travelDistance = (this.app.screen.width + 80) - this.hitLineX;
 		const travelTimeMs = (travelDistance / GAME.noteSpeed) * 1000;
@@ -127,9 +191,10 @@ export class Renderer {
 		) {
 			const idx = state.nextNoteIndex;
 			const hitObj = state.manifest.hitObjects[idx];
-			const fingerColor = getFingerColorForKey(hitObj.char, layout);
+			const fingerColor = this.getCachedFingerColor(hitObj.char, layout);
 			const note = this.pool.acquire(hitObj.char, hitObj.time, fingerColor);
-			this.noteContainer.addChild(note.container);
+			// Remarque: Pas besoin d'appeler noteContainer.addChild à chaque frame
+			// si note.container est déjà attaché de manière persistante lors de l'acquire.
 			state.processedIndices.add(idx);
 			state.nextNoteIndex++;
 		}

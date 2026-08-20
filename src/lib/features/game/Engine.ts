@@ -190,7 +190,7 @@ export class Engine {
 		const currentTimeMs = this.smoothClock.update(rawAudioTimeMs);
 
 		// Rendu ultra-fluide 60/120/144 FPS
-		this.renderer.updateNotes(this.state, currentTimeMs + this.visualOffsetMs, this.layout);
+		this.renderer.update(this.state, currentTimeMs + this.visualOffsetMs, this.layout);
 
 		// Calculer les touches "incoming" de manière optimisée
 		this.incomingKeys.clear();
