@@ -92,11 +92,94 @@ export function parseOsuFile(content: string, filename?: string): ParsedOsuMap {
 	// Trier les notes par timestamp
 	rawHitObjects.sort((a, b) => a.time - b.time);
 
-	// Attribuer des touches par défaut
-	const ALPHABET = 'abcdefghijklmnopqrstuvwxyz';
-	const hitObjects: HitObject[] = rawHitObjects.map((ho) => ({
+	// Group into runs (patterns)
+	const gapThreshold = firstBeatLength ? (firstBeatLength * 1.5) : 500;
+	const runs: number[][] = [];
+	let currentRun: number[] = [];
+
+	for (let i = 0; i < rawHitObjects.length; i++) {
+		if (i === 0) {
+			currentRun.push(i);
+		} else {
+			const dt = rawHitObjects[i].time - rawHitObjects[i - 1].time;
+			if (dt > gapThreshold) {
+				runs.push(currentRun);
+				currentRun = [i];
+			} else {
+				currentRun.push(i);
+			}
+		}
+	}
+	if (currentRun.length > 0) {
+		runs.push(currentRun);
+	}
+
+	// Cache for generated keystroke patterns (signature string -> array of characters)
+	const patternCache = new Map<string, string[]>();
+
+	const KEYS = ['f', 'j', 'd', 'k', 's', 'l', 'a', 'g', 'h'];
+
+	// Generate keys for each run
+	const charMapping = new Array<string>(rawHitObjects.length);
+
+	for (const run of runs) {
+		if (run.length === 1) {
+			// A single isolated note
+			charMapping[run[0]] = 'f';
+			continue;
+		}
+
+		// Calculate signature
+		const intervals: number[] = [];
+		for (let j = 1; j < run.length; j++) {
+			const dt = rawHitObjects[run[j]].time - rawHitObjects[run[j - 1]].time;
+			// Round to nearest 10ms to tolerate small mapper placement variations
+			intervals.push(Math.round(dt / 10) * 10);
+		}
+		const sig = intervals.join(',');
+
+		// Get or generate key pattern
+		let keysForRun = patternCache.get(sig);
+		if (!keysForRun) {
+			// Generate deterministic sequence of key indices for this interval pattern
+			const fingerSeq: number[] = [];
+			fingerSeq.push(0); // Start with Left index (f)
+
+			for (let j = 0; j < intervals.length; j++) {
+				const dt = intervals[j];
+				const prevFinger = fingerSeq[fingerSeq.length - 1];
+
+				let nextFinger = 0;
+				if (dt < 150) {
+					// Stream/Triplet: alternate hands (left/right index)
+					nextFinger = (prevFinger === 0 || prevFinger === 2 || prevFinger === 4) ? 1 : 0;
+				} else if (dt < 300) {
+					// Medium speed: alternate hands, introducing middle fingers
+					if (prevFinger === 0) nextFinger = 3; // Left index -> Right middle
+					else if (prevFinger === 1) nextFinger = 2; // Right index -> Left middle
+					else if (prevFinger === 2) nextFinger = 1; // Left middle -> Right index
+					else nextFinger = 0; // Right middle -> Left index
+				} else {
+					// Slow notes: alternate index fingers
+					nextFinger = (prevFinger === 0 || prevFinger === 2) ? 1 : 0;
+				}
+				fingerSeq.push(nextFinger);
+			}
+
+			// Map finger indices to actual characters
+			keysForRun = fingerSeq.map(f => KEYS[f % KEYS.length]);
+			patternCache.set(sig, keysForRun);
+		}
+
+		// Assign characters to this run
+		for (let j = 0; j < run.length; j++) {
+			charMapping[run[j]] = keysForRun[j];
+		}
+	}
+
+	const hitObjects: HitObject[] = rawHitObjects.map((ho, idx) => ({
 		time: ho.time,
-		char: ALPHABET[Math.floor(Math.random() * ALPHABET.length)],
+		char: charMapping[idx] || 'f',
 		type: ho.type
 	}));
 
