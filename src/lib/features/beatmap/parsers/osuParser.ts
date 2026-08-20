@@ -114,10 +114,35 @@ export function parseOsuFile(content: string, filename?: string): ParsedOsuMap {
 		runs.push(currentRun);
 	}
 
+	// Hash utility for pattern signatures
+	const getHashCode = (str: string): number => {
+		let hash = 0;
+		for (let i = 0; i < str.length; i++) {
+			hash = (hash << 5) - hash + str.charCodeAt(i);
+			hash |= 0;
+		}
+		return Math.abs(hash);
+	};
+
+	// 13 Left/Right pairs mapping covering all 26 letters of the English alphabet
+	const PAIRS: [string, string][] = [
+		['f', 'j'],
+		['d', 'k'],
+		['s', 'l'],
+		['g', 'h'],
+		['r', 'u'],
+		['e', 'i'],
+		['w', 'o'],
+		['v', 'm'],
+		['c', 'b'],
+		['x', 'n'],
+		['z', 'y'],
+		['q', 'p'],
+		['a', 't']
+	];
+
 	// Cache for generated keystroke patterns (signature string -> array of characters)
 	const patternCache = new Map<string, string[]>();
-
-	const KEYS = ['f', 'j', 'd', 'k', 's', 'l', 'a', 'g', 'h'];
 
 	// Generate keys for each run
 	const charMapping = new Array<string>(rawHitObjects.length);
@@ -141,33 +166,52 @@ export function parseOsuFile(content: string, filename?: string): ParsedOsuMap {
 		// Get or generate key pattern
 		let keysForRun = patternCache.get(sig);
 		if (!keysForRun) {
-			// Generate deterministic sequence of key indices for this interval pattern
-			const fingerSeq: number[] = [];
-			fingerSeq.push(0); // Start with Left index (f)
+			const hash = getHashCode(sig);
+			let pairIdx = hash % PAIRS.length;
+			const runKeys: string[] = [];
+
+			let lastHand: 'left' | 'right' = 'left';
+			runKeys.push(PAIRS[pairIdx][0]); // Start with Left key of the pair
+
+			let notesInCurrentPair = 1;
 
 			for (let j = 0; j < intervals.length; j++) {
 				const dt = intervals[j];
-				const prevFinger = fingerSeq[fingerSeq.length - 1];
 
-				let nextFinger = 0;
 				if (dt < 150) {
-					// Stream/Triplet: alternate hands (left/right index)
-					nextFinger = (prevFinger === 0 || prevFinger === 2 || prevFinger === 4) ? 1 : 0;
+					// Very fast stream: alternate hands
+					if (notesInCurrentPair >= 4) {
+						// Switch to next pair for long streams (cascading roll)
+						pairIdx = (pairIdx + 1) % PAIRS.length;
+						notesInCurrentPair = 0;
+					}
+					lastHand = lastHand === 'left' ? 'right' : 'left';
+					const char = lastHand === 'left' ? PAIRS[pairIdx][0] : PAIRS[pairIdx][1];
+					runKeys.push(char);
+					notesInCurrentPair++;
 				} else if (dt < 300) {
-					// Medium speed: alternate hands, introducing middle fingers
-					if (prevFinger === 0) nextFinger = 3; // Left index -> Right middle
-					else if (prevFinger === 1) nextFinger = 2; // Right index -> Left middle
-					else if (prevFinger === 2) nextFinger = 1; // Left middle -> Right index
-					else nextFinger = 0; // Right middle -> Left index
+					// Medium speed: alternate hands, switch pair every 2 notes
+					if (notesInCurrentPair >= 2) {
+						pairIdx = (pairIdx + 1) % PAIRS.length;
+						notesInCurrentPair = 0;
+					}
+					lastHand = lastHand === 'left' ? 'right' : 'left';
+					const char = lastHand === 'left' ? PAIRS[pairIdx][0] : PAIRS[pairIdx][1];
+					runKeys.push(char);
+					notesInCurrentPair++;
 				} else {
-					// Slow notes: alternate index fingers
-					nextFinger = (prevFinger === 0 || prevFinger === 2) ? 1 : 0;
+					// Slow notes: single-tap (or same-hand tap) on the Left key of the current pair
+					// but switch pair for variety after 2 slow notes
+					if (notesInCurrentPair >= 2) {
+						pairIdx = (pairIdx + 1) % PAIRS.length;
+						notesInCurrentPair = 0;
+					}
+					lastHand = 'left';
+					runKeys.push(PAIRS[pairIdx][0]);
+					notesInCurrentPair++;
 				}
-				fingerSeq.push(nextFinger);
 			}
-
-			// Map finger indices to actual characters
-			keysForRun = fingerSeq.map(f => KEYS[f % KEYS.length]);
+			keysForRun = runKeys;
 			patternCache.set(sig, keysForRun);
 		}
 
