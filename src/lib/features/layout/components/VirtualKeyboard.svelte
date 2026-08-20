@@ -10,7 +10,10 @@
 		pressedKeys = new Set<string>(),
 		incomingKeys = new Set<string>(),
 		unlockedKeys = new Set<string>(['f', 'j']),
-		scale = 1.0
+		scale = 1.0,
+		selectable = false,
+		selectedKeys = new Set<string>(),
+		onKeyToggle = (char: string) => {}
 	}: {
 		layout: Layout;
 		activeLayerIndex?: number;
@@ -18,6 +21,9 @@
 		incomingKeys?: Set<string>;
 		unlockedKeys?: Set<string>;
 		scale?: number;
+		selectable?: boolean;
+		selectedKeys?: Set<string>;
+		onKeyToggle?: (char: string) => void;
 	} = $props();
 
 	// Physical row stagger offsets for standard keyboards
@@ -80,7 +86,14 @@
 				{@const fingerColor = getFingerColor(key.finger)}
 				{@const lightText = isColorDark(fingerColor)}
 
-				<div
+				<button
+					type="button"
+					onclick={() => {
+						if (selectable && unlocked) {
+							onKeyToggle(key.char.toLowerCase());
+						}
+					}}
+					disabled={selectable && !unlocked}
 					data-key={key.char.toLowerCase()}
 					data-code={key.keyCode.toLowerCase()}
 					data-finger-color={fingerColor}
@@ -90,25 +103,35 @@
 					class="
 						keyboard-key relative w-10 h-10 md:w-12 md:h-12 border-2 border-secondary rounded-lg flex flex-col items-center justify-center
 						font-mono font-black text-xs md:text-sm uppercase transition-all select-none
-						{!unlocked
-							? 'bg-secondary/10 text-text-dim border-dashed opacity-45 shadow-none cursor-not-allowed'
-							: pressed
-								? 'translate-x-[2px] translate-y-[2px] shadow-none border-secondary'
-								: incoming
-									? 'animate-pulse'
-									: 'bg-bg text-text shadow-[2px_2px_0px_0px_var(--color-secondary)] hover:border-text-dim'
+						{selectable
+							? !unlocked
+								? 'bg-secondary/10 text-text-dim border-dashed opacity-25 shadow-none cursor-not-allowed'
+								: selectedKeys.has(key.char.toLowerCase())
+									? 'bg-bg text-text shadow-[2px_2px_0px_0px_var(--color-secondary)] cursor-pointer'
+									: 'bg-secondary/5 text-text-dim border-dashed opacity-40 hover:opacity-70 cursor-pointer shadow-none'
+							: !unlocked
+								? 'bg-secondary/10 text-text-dim border-dashed opacity-45 shadow-none cursor-not-allowed'
+								: pressed
+									? 'translate-x-[2px] translate-y-[2px] shadow-none border-secondary'
+									: incoming
+										? 'animate-pulse'
+										: 'bg-bg text-text shadow-[2px_2px_0px_0px_var(--color-secondary)] hover:border-text-dim'
 						}
 					"
 					style={
-						!unlocked
-							? ''
-							: pressed
-								? `background-color: ${fingerColor}; color: ${lightText ? '#ffffff' : '#150029'}; border-color: #0B0014;`
-								: incoming
-									? `background-color: ${fingerColor}33; border-color: ${fingerColor}; color: ${fingerColor}; box-shadow: 2px 2px 0px 0px ${fingerColor};`
-									: key.isModifier
-										? `border-color: ${COLORS.accent};`
-										: ''
+						selectable
+							? unlocked && selectedKeys.has(key.char.toLowerCase())
+								? `background-color: ${fingerColor}; color: ${lightText ? '#ffffff' : '#150029'};`
+								: ''
+							: !unlocked
+								? ''
+								: pressed
+									? `background-color: ${fingerColor}; color: ${lightText ? '#ffffff' : '#150029'}; border-color: #0B0014;`
+									: incoming
+										? `background-color: ${fingerColor}33; border-color: ${fingerColor}; color: ${fingerColor}; box-shadow: 2px 2px 0px 0px ${fingerColor};`
+										: key.isModifier
+											? `border-color: ${COLORS.accent};`
+											: ''
 					}
 				>
 					{#if !unlocked}
@@ -129,7 +152,7 @@
 							style="background-color: {fingerColor}; opacity: {pressed ? 0 : 1};"
 						></span>
 					{/if}
-				</div>
+				</button>
 			{/each}
 		</div>
 	{/each}

@@ -50,11 +50,24 @@
 
 	// Keyboard state
 	let unlockedKeys = $state<Set<string>>(new Set(['f', 'j']));
+	let showKeySelector = $state(false);
+	let selectedKeys = $state<Set<string>>(new Set());
+
+	function toggleKey(char: string) {
+		if (selectedKeys.has(char)) {
+			if (selectedKeys.size <= 2) return; // minimum 2 keys active required
+			selectedKeys.delete(char);
+		} else {
+			selectedKeys.add(char);
+		}
+		selectedKeys = new Set(selectedKeys);
+	}
 
 	onMount(async () => {
 		settings = await loadSettings();
 		const prog = await loadProgression();
 		unlockedKeys = new Set(getUnlockedKeys(prog.xp, layout, settings?.layoutFamiliarity ?? 1));
+		selectedKeys = new Set(unlockedKeys);
 
 		setMasterVolume(settings.masterVolume / 100);
 		setEffectsVolume(settings.effectsVolume / 100);
@@ -65,23 +78,26 @@
 		if (!isRunning) {
 			requiresClickToStart = true;
 		} else {
-			await initEngineAndStart();
+			isLoaded = true;
+			showKeySelector = true;
 		}
 	});
 
 	async function handleUserStart() {
 		requiresClickToStart = false;
 		await ensureAudioContextRunning();
-		await initEngineAndStart();
+		isLoaded = true;
+		showKeySelector = true;
 	}
 
 	async function initEngineAndStart() {
 		if (canvasEl && !engine) {
+			showKeySelector = false;
 			const instance = new Engine(
 				canvasEl,
 				manifest,
 				layout,
-				Array.from(unlockedKeys),
+				Array.from(selectedKeys),
 				settings?.audioOffsetMs ?? 0,
 				settings?.visualOffsetMs ?? 0,
 				settings?.leniencyMode ?? 'normal',
@@ -211,6 +227,43 @@
 			<div class="flex flex-col items-center gap-3">
 				<div class="w-12 h-12 rounded-full border-4 border-t-accent border-secondary animate-spin"></div>
 				<div class="font-black uppercase tracking-wider text-primary text-sm">Chargement du morceau & préparation des notes...</div>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Overlay de sélection des touches actives -->
+	{#if showKeySelector && isLoaded}
+		<div class="absolute inset-0 z-40 bg-bg/95 flex flex-col items-center justify-center p-6 text-center select-none backdrop-blur-sm text-text">
+			<div class="bg-surface border-4 border-secondary p-8 rounded-xl shadow-[8px_8px_0px_#1a0033] max-w-2xl flex flex-col items-center gap-6">
+				<div class="flex flex-col gap-1.5">
+					<div class="text-2xl font-black uppercase text-primary tracking-wider">Configuration des Touches</div>
+					<p class="text-xs font-bold text-text-dim uppercase tracking-wider">
+						Sélectionnez les touches que vous souhaitez activer pour ce niveau ({selectedKeys.size} actives).
+					</p>
+					<p class="text-[10px] font-black text-accent uppercase tracking-widest">
+						(Cliquez sur les touches pour les activer/désactiver — Minimum 2 touches)
+					</p>
+				</div>
+
+				<!-- Clavier Virtuel Interactif -->
+				<div class="w-full py-2">
+					<VirtualKeyboard 
+						{layout} 
+						{unlockedKeys} 
+						scale={(settings?.keyboardScale ?? 1.0) * 0.9} 
+						selectable={true}
+						{selectedKeys}
+						onKeyToggle={toggleKey}
+					/>
+				</div>
+
+				<button
+					onclick={initEngineAndStart}
+					disabled={selectedKeys.size < 2}
+					class="border-4 border-secondary bg-primary text-secondary px-8 py-3 rounded-lg font-black uppercase text-sm md:text-base shadow-[4px_4px_0px_#ff3366] hover:translate-x-[2px] hover:translate-y-[2px] cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0 flex items-center gap-2"
+				>
+					<Play class="w-5 h-5 fill-secondary" /> LANCER LA PARTIE
+				</button>
 			</div>
 		</div>
 	{/if}
