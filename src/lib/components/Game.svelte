@@ -2,7 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import type { Layout } from '$lib/schemas/titl';
 	import type { Manifest } from '$lib/schemas/titm';
-	import { loadAudio, ensureAudioContextRunning, getAudioContext, playHitSound, playComboBreakSound, setMasterVolume } from '$lib/audio';
+	import { loadAudio, ensureAudioContextRunning, getAudioContext, playHitSound, playComboBreakSound, setMasterVolume, setEffectsVolume } from '$lib/audio';
 	import { updateFingerStats, updateKeyStats, recordHitLatency, completeMap, loadProgression, getUnlockedKeys, type RankGrade } from '$lib/progression';
 	import { loadSettings, type UserSettings } from '$lib/settings';
 	import VirtualKeyboard from '$lib/components/VirtualKeyboard.svelte';
@@ -54,9 +54,10 @@
 	onMount(async () => {
 		settings = await loadSettings();
 		const prog = await loadProgression();
-		unlockedKeys = new Set(getUnlockedKeys(prog.xp, layout, settings?.layoutFamiliarity ?? 1));
+		unlockedKeys = new Set(getUnlockedKeys(prog.xp, settings?.layoutFamiliarity ?? 1));
 
 		setMasterVolume(settings.masterVolume / 100);
+		setEffectsVolume(settings.effectsVolume / 100);
 
 		await loadAudio(audioBlob);
 
@@ -84,6 +85,7 @@
 				settings?.audioOffsetMs ?? 0,
 				settings?.visualOffsetMs ?? 0,
 				settings?.leniencyMode ?? 'normal',
+				settings?.noteSpeed ?? 400,
 				{
 					onStateUpdate: (state) => {
 						combo = state.combo;

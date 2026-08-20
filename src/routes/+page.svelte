@@ -184,7 +184,7 @@
 
 <div class="max-w-4xl mx-auto px-6 py-6 flex flex-col gap-6 text-left select-none pb-32">
 	<!-- Widget de Progression des Paliers de Touches Adapté au Layout Actif -->
-	<KeysProgressionWidget xp={progression?.xp ?? 0} layout={activeLayout} />
+	<KeysProgressionWidget xp={progression?.xp ?? 0} />
 
 	<!-- Barre de Recherche et Importation -->
 	<div class="flex items-center justify-between gap-4">
