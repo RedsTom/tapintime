@@ -56,7 +56,7 @@
 	onMount(async () => {
 		settings = await loadSettings();
 		const prog = await loadProgression();
-		unlockedKeys = new Set(getUnlockedKeys(prog.xp, layout));
+		unlockedKeys = new Set(getUnlockedKeys(prog.xp, layout, settings?.layoutFamiliarity ?? 1));
 
 		setMasterVolume(settings.masterVolume / 100);
 
@@ -85,6 +85,7 @@
 				Array.from(unlockedKeys),
 				settings?.audioOffsetMs ?? 0,
 				settings?.visualOffsetMs ?? 0,
+				settings?.leniencyMode ?? 'normal',
 				{
 					onStateUpdate: (state, incoming) => {
 						combo = state.combo;

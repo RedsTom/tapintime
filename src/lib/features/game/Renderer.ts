@@ -1,5 +1,5 @@
 import { Application, Container, Graphics } from 'pixi.js';
-import { COLORS, GAME, TIMING } from '$lib/tokens';
+import { COLORS, GAME } from '$lib/tokens';
 import { NotePool } from './objectPool';
 import { getFingerColorForKey } from '$lib/fingerColors';
 import type { GameState } from './GameState';
@@ -146,7 +146,7 @@ export class Renderer {
 			note.container.position.set(targetX, yCenter);
 
 			// Détection des ratés (timing dépassé) sans faire disparaître la note immédiatement
-			if (!note.missed && currentTimeMs >= 0 && currentTimeMs - note.time > TIMING.goodWindow) {
+			if (!note.missed && currentTimeMs >= 0 && currentTimeMs - note.time > state.timingWindows.goodWindow) {
 				state.registerMiss(note);
 				note.container.alpha = 0.35; // Asombrissement / transparence de la note ratée
 			}

@@ -6,7 +6,7 @@ import { getPlaybackTime, resumeAudioContext, ensureAudioContextRunning, schedul
 import type { Manifest } from '../beatmap/schemas/titm';
 import type { Layout } from '../layout/schemas/titl';
 import { getFingerForKey } from '../layout/fingerColors';
-import { COLORS, GAME } from '$lib/tokens';
+import { COLORS, GAME, type LeniencyMode } from '$lib/tokens';
 
 export interface EngineCallbacks {
 	onStateUpdate: (state: GameState, incomingKeys: Set<string>) => void;
@@ -89,9 +89,10 @@ export class Engine {
 		unlockedKeys: string[],
 		audioOffsetMs: number,
 		visualOffsetMs: number,
+		leniencyMode: LeniencyMode,
 		callbacks: EngineCallbacks
 	) {
-		this.state = new GameState(manifest, unlockedKeys);
+		this.state = new GameState(manifest, unlockedKeys, leniencyMode);
 		this.layout = layout;
 		this.audioOffsetMs = audioOffsetMs;
 		this.visualOffsetMs = visualOffsetMs;

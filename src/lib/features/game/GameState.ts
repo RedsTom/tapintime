@@ -1,7 +1,7 @@
 import type { Manifest } from '../beatmap/schemas/titm';
 import type { PooledNote } from './objectPool';
 import { NotePool } from './objectPool';
-import { TIMING } from '$lib/tokens';
+import { TIMING_MODES, type LeniencyMode } from '$lib/tokens';
 
 const SCORE = {
 	perfect: 300,
@@ -20,6 +20,8 @@ export interface HitResult {
 export class GameState {
 	public manifest: Manifest;
 	public score: number = 0;
+	public rawScore: number = 0;
+	public maxPossibleRawScore: number = 0;
 	public combo: number = 0;
 	public maxCombo: number = 0;
 	public perfect: number = 0;
@@ -32,8 +34,11 @@ export class GameState {
 	public totalNotes: number = 0;
 
 	public onMissCallback?: (note: PooledNote, comboBefore: number) => void;
+	
+	public timingWindows: typeof TIMING_MODES[LeniencyMode];
 
-	constructor(manifest: Manifest, unlockedKeys: string[] = ['f', 'j']) {
+	constructor(manifest: Manifest, unlockedKeys: string[] = ['f', 'j'], leniencyMode: LeniencyMode = 'normal') {
+		this.timingWindows = TIMING_MODES[leniencyMode];
 		const availableKeys = unlockedKeys.length > 0 ? unlockedKeys : ['f', 'j'];
 
 		// Adapter et sécuriser toutes les notes pour correspondre aux touches débloquées
@@ -52,6 +57,13 @@ export class GameState {
 		this.manifest = { ...manifest, hitObjects: adaptedHitObjects };
 		this.totalNotes = this.manifest.hitObjects.length;
 		this.nextNoteIndex = 0;
+
+		// Compute max possible raw score (100% SS)
+		let maxRaw = 0;
+		for (let i = 1; i <= this.totalNotes; i++) {
+			maxRaw += SCORE.perfect * Math.min(i, 10);
+		}
+		this.maxPossibleRawScore = maxRaw;
 	}
 
 	/**
@@ -78,7 +90,7 @@ export class GameState {
 
 			if (note.char.toLowerCase() === char.toLowerCase()) {
 				const delta = Math.abs(currentTimeMs - note.time);
-				if (delta <= TIMING.goodWindow && delta < minDelta) {
+				if (delta <= this.timingWindows.goodWindow && delta < minDelta) {
 					minDelta = delta;
 					rawDelta = currentTimeMs - note.time;
 					closest = note;
@@ -91,11 +103,11 @@ export class GameState {
 		let rating: 'perfect' | 'great' | 'good' = 'good';
 		let points: number = SCORE.good;
 
-		if (minDelta <= TIMING.perfectWindow) {
+		if (minDelta <= this.timingWindows.perfectWindow) {
 			rating = 'perfect';
 			points = SCORE.perfect;
 			this.perfect++;
-		} else if (minDelta <= TIMING.greatWindow) {
+		} else if (minDelta <= this.timingWindows.greatWindow) {
 			rating = 'great';
 			points = SCORE.great;
 			this.great++;
@@ -106,7 +118,11 @@ export class GameState {
 		this.combo++;
 		if (this.combo > this.maxCombo) this.maxCombo = this.combo;
 
-		this.score += points * Math.min(this.combo, 10);
+		this.rawScore += points * Math.min(this.combo, 10);
+		if (this.maxPossibleRawScore > 0) {
+			this.score = Math.floor(1_000_000 * (this.rawScore / this.maxPossibleRawScore));
+		}
+		
 		pool.release(closest);
 		return { rating, deltaMs: rawDelta };
 	}
