@@ -31,7 +31,9 @@ export class NotePool {
 	 */
 	public ensureCapacity(size: number): void {
 		while (this.pool.length + this.active.length < size) {
-			this.pool.push(this.createNote());
+			const note = this.createNote();
+			this.parent.addChild(note.container);
+			this.pool.push(note);
 		}
 	}
 
