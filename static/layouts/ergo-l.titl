@@ -1,0 +1,38 @@
+{
+	"name": "Ergo-L",
+	"description": "Disposition ergonomique française séparée (Columnar Split)",
+	"layers": [
+		{
+			"name": "Base",
+			"keys": [
+				{ "keyCode": "KeyA", "char": "n", "finger": "L_PINKY", "x": 0, "y": 0 },
+				{ "keyCode": "KeyE", "char": "t", "finger": "L_RING", "x": 1, "y": 0 },
+				{ "keyCode": "KeyT", "char": "d", "finger": "L_MIDDLE", "x": 2, "y": 0 },
+				{ "keyCode": "KeyU", "char": "a", "finger": "L_INDEX", "x": 3, "y": 0 },
+				{ "keyCode": "KeyI", "char": "o", "finger": "L_INDEX", "x": 4, "y": 0 },
+
+				{ "keyCode": "KeyO", "char": "i", "finger": "R_INDEX", "x": 6, "y": 0 },
+				{ "keyCode": "KeyP", "char": "e", "finger": "R_INDEX", "x": 7, "y": 0 },
+				{ "keyCode": "KeyQ", "char": "c", "finger": "R_MIDDLE", "x": 8, "y": 0 },
+				{ "keyCode": "KeyD", "char": "p", "finger": "R_RING", "x": 9, "y": 0 },
+				{ "keyCode": "KeyG", "char": "q", "finger": "R_PINKY", "x": 10, "y": 0 },
+
+				{ "keyCode": "KeyZ", "char": "r", "finger": "L_PINKY", "x": 0, "y": 1 },
+				{ "keyCode": "KeyR", "char": "s", "finger": "L_RING", "x": 1, "y": 1 },
+				{ "keyCode": "KeyY", "char": "l", "finger": "L_MIDDLE", "x": 2, "y": 1 },
+				{ "keyCode": "KeyF", "char": "f", "finger": "L_INDEX", "x": 3, "y": 1 },
+				{ "keyCode": "KeyG", "char": "b", "finger": "L_INDEX", "x": 4, "y": 1 },
+
+				{ "keyCode": "KeyH", "char": "m", "finger": "R_INDEX", "x": 6, "y": 1 },
+				{ "keyCode": "KeyJ", "char": "j", "finger": "R_INDEX", "x": 7, "y": 1 },
+				{ "keyCode": "KeyS", "char": "u", "finger": "R_MIDDLE", "x": 8, "y": 1 },
+				{ "keyCode": "KeyK", "char": "v", "finger": "R_RING", "x": 9, "y": 1 },
+				{ "keyCode": "KeyL", "char": "x", "finger": "R_PINKY", "x": 10, "y": 1 }
+			]
+		}
+	],
+	"thumbKeys": [
+		{ "keyCode": "Space", "finger": "L_THUMB", "x": 3.5, "y": 2, "layer": "Base" },
+		{ "keyCode": "Space", "finger": "R_THUMB", "x": 6.5, "y": 2, "layer": "Base" }
+	]
+}
