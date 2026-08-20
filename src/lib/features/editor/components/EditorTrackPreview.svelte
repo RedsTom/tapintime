@@ -150,9 +150,17 @@
 		async function initApp() {
 			if (!containerEl) return;
 
+			const canvas = document.createElement('canvas');
+			canvas.style.width = '100%';
+			canvas.style.height = '100%';
+			canvas.style.display = 'block';
+			canvas.style.position = 'absolute';
+			canvas.style.top = '0';
+			canvas.style.left = '0';
+
 			app = new Application();
 			await app.init({
-				canvas: document.createElement('canvas'),
+				canvas,
 				width: containerEl.clientWidth,
 				height: 140 + (totalLanes - 1) * 35,
 				backgroundAlpha: 0,
