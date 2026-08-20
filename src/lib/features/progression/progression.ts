@@ -156,10 +156,10 @@ export function getPlayerLevel(xp: number): { level: number; currentXp: number; 
 }
 
 /**
- * Calcule la liste des touches débloquées en fonction des paliers d'XP.
+ * Calcule la liste des touches débloquées en fonction des paliers d'XP et du layout actif.
  */
-export function getUnlockedKeys(xp: number, minTier: number = 1): string[] {
-	const tiers = getKeyTiersForLayout(null);
+export function getUnlockedKeys(xp: number, layout?: Layout | null, minTier: number = 1): string[] {
+	const tiers = getKeyTiersForLayout(layout);
 	const unlocked: string[] = [];
 	for (const tier of tiers) {
 		if (xp >= tier.xpRequired || tier.tier <= minTier) {
@@ -170,20 +170,20 @@ export function getUnlockedKeys(xp: number, minTier: number = 1): string[] {
 			}
 		}
 	}
-	return unlocked.length > 0 ? unlocked : [getCharForKeyCode('KeyF', null), getCharForKeyCode('KeyJ', null)];
+	return unlocked.length > 0 ? unlocked : [getCharForKeyCode('KeyF', layout), getCharForKeyCode('KeyJ', layout)];
 }
 
 /**
- * Renvoie les détails du palier actuel et du prochain palier indépendants du layout.
+ * Renvoie les détails du palier actuel et du prochain palier adaptiques au layout.
  */
-export function getTierInfo(xp: number): {
+export function getTierInfo(xp: number, layout?: Layout | null): {
 	currentTier: KeyTier;
 	nextTier: KeyTier | null;
 	progressToNextRatio: number;
 	xpNeededForNext: number;
 	allTiers: KeyTier[];
 } {
-	const allTiers = getKeyTiersForLayout(null);
+	const allTiers = getKeyTiersForLayout(layout);
 	let currentTier = allTiers[0];
 	let nextTier: KeyTier | null = allTiers[1];
 
@@ -322,16 +322,17 @@ export async function completeMap(
 	score: number,
 	accuracy: number,
 	missCount: number,
-	maxCombo: number
+	maxCombo: number,
+	layout?: Layout | null
 ): Promise<{ xpEarned: number; grade: RankGrade; newlyUnlockedKeys: string[] }> {
 	const prog = await loadProgression();
-	const oldUnlocked = getUnlockedKeys(prog.xp);
+	const oldUnlocked = getUnlockedKeys(prog.xp, layout);
 
 	const grade = getGradeRank(accuracy, missCount);
 	const xpEarned = grade === 'SS' ? 50 : grade === 'S' ? 35 : grade === 'A' ? 25 : grade === 'B' ? 15 : 10;
 
 	prog.xp += xpEarned;
-	const newUnlocked = getUnlockedKeys(prog.xp);
+	const newUnlocked = getUnlockedKeys(prog.xp, layout);
 	prog.unlockedKeys = newUnlocked;
 
 	const newlyUnlockedKeys = newUnlocked.filter((k) => !oldUnlocked.includes(k));

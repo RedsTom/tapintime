@@ -54,7 +54,7 @@
 	onMount(async () => {
 		settings = await loadSettings();
 		const prog = await loadProgression();
-		unlockedKeys = new Set(getUnlockedKeys(prog.xp, settings?.layoutFamiliarity ?? 1));
+		unlockedKeys = new Set(getUnlockedKeys(prog.xp, layout, settings?.layoutFamiliarity ?? 1));
 
 		setMasterVolume(settings.masterVolume / 100);
 		setEffectsVolume(settings.effectsVolume / 100);

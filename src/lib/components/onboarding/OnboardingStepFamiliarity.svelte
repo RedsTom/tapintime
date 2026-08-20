@@ -51,7 +51,7 @@
 				<VirtualKeyboard 
 					layout={previewLayout} 
 					pressedKeys={new Set()} 
-					unlockedKeys={new Set(getUnlockedKeys(0, layoutFamiliarity))}
+					unlockedKeys={new Set(getUnlockedKeys(0, previewLayout, layoutFamiliarity))}
 					scale={0.7} 
 				/>
 			</div>

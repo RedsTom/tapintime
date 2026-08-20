@@ -1,8 +1,9 @@
 import type { HitObject, Manifest } from '../beatmap/schemas/titm';
 import { ManifestSchema } from '../beatmap/schemas/titm';
 import type { ParsedOszPackage } from '../beatmap/types';
-import { saveCustomBeatmap } from '$lib/storage';
-import { KEY_TIERS } from '$lib/progression';
+import { saveCustomBeatmap, loadLayoutByNameOrId } from '$lib/storage';
+import { KEY_TIERS, getKeyTiersForLayout } from '$lib/progression';
+import type { Layout } from '$lib/schemas/titl';
 
 export type BeatSnapFraction = '1/1' | '1/2' | '1/4' | '1/8' | '1/16';
 
@@ -35,8 +36,32 @@ export class BeatmapEditorState {
 	public mapId = $state(`custom_map_${Date.now()}`);
 
 	// Prévisualisation de Layout & Palier de Progression
-	public selectedLayoutName = $state('azerty');
+	private _selectedLayoutName = $state('azerty');
+	public previewLayout = $state<Layout | null>(null);
+
+	public get selectedLayoutName() {
+		return this._selectedLayoutName;
+	}
+
+	public set selectedLayoutName(val: string) {
+		this._selectedLayoutName = val;
+		this.loadPreviewLayout(val);
+	}
+
+	private async loadPreviewLayout(name: string) {
+		if (typeof window === 'undefined') return;
+		try {
+			this.previewLayout = await loadLayoutByNameOrId(name);
+		} catch (e) {
+			console.error('Erreur chargement layout preview:', e);
+		}
+	}
+
 	public selectedTierLevel = $state(15); // 1 à 15 (15 = Toutes les touches débloquées)
+
+	constructor() {
+		this.loadPreviewLayout(this._selectedLayoutName);
+	}
 
 	// Package OSZ
 	public oszPackage = $state<ParsedOszPackage | null>(null);
@@ -73,7 +98,8 @@ export class BeatmapEditorState {
 		if (this.selectedTierLevel >= 15) return [];
 
 		const keys: string[] = [];
-		for (const tier of KEY_TIERS) {
+		const tiers = getKeyTiersForLayout(this.previewLayout);
+		for (const tier of tiers) {
 			if (tier.tier <= this.selectedTierLevel) {
 				for (const k of tier.keys) {
 					if (!keys.includes(k.toLowerCase())) keys.push(k.toLowerCase());
