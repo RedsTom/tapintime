@@ -55,17 +55,17 @@ export const KEY_TIER_DEFINITIONS: KeyTierDefinition[] = [
 	{ tier: 1, keyCodes: ['KeyF', 'KeyJ'], xpRequired: 0 },
 	{ tier: 2, keyCodes: ['KeyD', 'KeyK'], xpRequired: 100 },
 	{ tier: 3, keyCodes: ['KeyS', 'KeyL'], xpRequired: 220 },
-	{ tier: 4, keyCodes: ['KeyQ', 'KeyM'], xpRequired: 360 },
+	{ tier: 4, keyCodes: ['KeyA', 'Semicolon'], xpRequired: 360 },
 	{ tier: 5, keyCodes: ['KeyG', 'KeyH'], xpRequired: 520 },
 	{ tier: 6, keyCodes: ['KeyR', 'KeyU'], xpRequired: 700 },
 	{ tier: 7, keyCodes: ['KeyE', 'KeyI'], xpRequired: 900 },
-	{ tier: 8, keyCodes: ['KeyZ', 'KeyO'], xpRequired: 1120 },
-	{ tier: 9, keyCodes: ['KeyA', 'KeyP'], xpRequired: 1360 },
+	{ tier: 8, keyCodes: ['KeyW', 'KeyO'], xpRequired: 1120 },
+	{ tier: 9, keyCodes: ['KeyQ', 'KeyP'], xpRequired: 1360 },
 	{ tier: 10, keyCodes: ['KeyT', 'KeyY'], xpRequired: 1620 },
-	{ tier: 11, keyCodes: ['KeyV', 'Comma'], xpRequired: 1900 },
-	{ tier: 12, keyCodes: ['KeyC', 'Semicolon'], xpRequired: 2200 },
-	{ tier: 13, keyCodes: ['KeyX', 'Colon'], xpRequired: 2520 },
-	{ tier: 14, keyCodes: ['KeyW', 'Exclamation'], xpRequired: 2860 },
+	{ tier: 11, keyCodes: ['KeyV', 'KeyM'], xpRequired: 1900 },
+	{ tier: 12, keyCodes: ['KeyC', 'Comma'], xpRequired: 2200 },
+	{ tier: 13, keyCodes: ['KeyX', 'Period'], xpRequired: 2520 },
+	{ tier: 14, keyCodes: ['KeyZ', 'Slash'], xpRequired: 2860 },
 	{ tier: 15, keyCodes: ['KeyB', 'KeyN'], xpRequired: 3220 }
 ];
 
@@ -158,11 +158,11 @@ export function getPlayerLevel(xp: number): { level: number; currentXp: number; 
 /**
  * Calcule la liste des touches débloquées en fonction des paliers d'XP et du layout actif.
  */
-export function getUnlockedKeys(xp: number, layout?: Layout | null): string[] {
+export function getUnlockedKeys(xp: number, layout?: Layout | null, minTier: number = 1): string[] {
 	const tiers = getKeyTiersForLayout(layout);
 	const unlocked: string[] = [];
 	for (const tier of tiers) {
-		if (xp >= tier.xpRequired) {
+		if (xp >= tier.xpRequired || tier.tier <= minTier) {
 			for (const key of tier.keys) {
 				if (!unlocked.includes(key.toLowerCase())) {
 					unlocked.push(key.toLowerCase());

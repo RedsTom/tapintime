@@ -30,11 +30,25 @@ export const SHADOW = {
 	blueYellowHover: `4px 4px 0px 0px ${COLORS.primary}`
 } as const;
 
-export const TIMING = {
-	perfectWindow: 80,
-	greatWindow: 160,
-	goodWindow: 240
+export const TIMING_MODES = {
+	strict: {
+		perfectWindow: 50,
+		greatWindow: 100,
+		goodWindow: 150
+	},
+	normal: {
+		perfectWindow: 80,
+		greatWindow: 160,
+		goodWindow: 240
+	},
+	facile: {
+		perfectWindow: 120,
+		greatWindow: 240,
+		goodWindow: 360
+	}
 } as const;
+
+export type LeniencyMode = keyof typeof TIMING_MODES;
 
 export const GAME = {
 	noteSpeed: 400,

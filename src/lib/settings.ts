@@ -11,6 +11,8 @@ export interface UserSettings {
 	onboardingCompleted: boolean;
 	audioOffsetMs: number;
 	visualOffsetMs: number;
+	leniencyMode: 'strict' | 'normal' | 'facile';
+	layoutFamiliarity: number;
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -23,7 +25,9 @@ export const DEFAULT_SETTINGS: UserSettings = {
 	username: '',
 	onboardingCompleted: false,
 	audioOffsetMs: 0,
-	visualOffsetMs: 0
+	visualOffsetMs: 0,
+	leniencyMode: 'normal',
+	layoutFamiliarity: 1
 };
 
 const SETTINGS_KEY = 'user_settings';
