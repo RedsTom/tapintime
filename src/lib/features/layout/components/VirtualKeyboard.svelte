@@ -81,8 +81,14 @@
 				{@const lightText = isColorDark(fingerColor)}
 
 				<div
+					data-key={key.char.toLowerCase()}
+					data-code={key.keyCode.toLowerCase()}
+					data-finger-color={fingerColor}
+					data-light-text={lightText}
+					data-unlocked={unlocked}
+					data-modifier={key.isModifier}
 					class="
-						relative w-10 h-10 md:w-12 md:h-12 border-2 border-secondary rounded-lg flex flex-col items-center justify-center
+						keyboard-key relative w-10 h-10 md:w-12 md:h-12 border-2 border-secondary rounded-lg flex flex-col items-center justify-center
 						font-mono font-black text-xs md:text-sm uppercase transition-all select-none
 						{!unlocked
 							? 'bg-secondary/10 text-text-dim border-dashed opacity-45 shadow-none cursor-not-allowed'
@@ -119,7 +125,7 @@
 
 					{#if unlocked}
 						<span
-							class="w-1.5 h-1.5 rounded-full absolute bottom-1.5 left-1/2 -translate-x-1/2 transition-opacity"
+							class="keyboard-dot w-1.5 h-1.5 rounded-full absolute bottom-1.5 left-1/2 -translate-x-1/2 transition-opacity"
 							style="background-color: {fingerColor}; opacity: {pressed ? 0 : 1};"
 						></span>
 					{/if}

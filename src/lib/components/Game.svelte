@@ -49,8 +49,6 @@
 	let finalStats = $state({ perfect: 0, great: 0, good: 0, miss: 0 });
 
 	// Keyboard state
-	let pressedKeys = $state<Set<string>>(new Set());
-	let incomingKeys = $state<Set<string>>(new Set());
 	let unlockedKeys = $state<Set<string>>(new Set(['f', 'j']));
 
 	onMount(async () => {
@@ -87,11 +85,10 @@
 				settings?.visualOffsetMs ?? 0,
 				settings?.leniencyMode ?? 'normal',
 				{
-					onStateUpdate: (state, incoming) => {
+					onStateUpdate: (state) => {
 						combo = state.combo;
 						score = state.score;
 						accuracy = state.getAccuracy();
-						incomingKeys = incoming;
 					},
 					onHit: (rating, char, finger, deltaMs, comboBeforeMiss) => {
 						lastRating = rating;
@@ -146,9 +143,7 @@
 						};
 						calculatingResults = false;
 					},
-					onPressedKeysChange: (keys) => {
-						pressedKeys = keys;
-					}
+					onPressedKeysChange: () => {}
 				}
 			);
 
@@ -268,10 +263,10 @@
 		</div>
 	{/if}
 
-	<!-- Clavier Virtuel Overlay -->
+	<!-- Clavier Virtuel Overlay (DOM mis à jour manuellement par le moteur pour éviter les stutters) -->
 	{#if settings?.showKeyboard && !finished}
-		<div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 w-fit">
-			<VirtualKeyboard {layout} {pressedKeys} {incomingKeys} {unlockedKeys} scale={settings.keyboardScale} />
+		<div id="game-keyboard-container" class="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 w-fit">
+			<VirtualKeyboard {layout} {unlockedKeys} scale={settings.keyboardScale} />
 		</div>
 	{/if}
 

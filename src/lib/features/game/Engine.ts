@@ -9,7 +9,7 @@ import { getFingerForKey } from '../layout/fingerColors';
 import { COLORS, GAME, type LeniencyMode } from '$lib/tokens';
 
 export interface EngineCallbacks {
-	onStateUpdate: (state: GameState, incomingKeys: Set<string>) => void;
+	onStateUpdate: (state: GameState) => void;
 	onHit: (
 		rating: 'perfect' | 'great' | 'good' | 'miss',
 		char?: string,
@@ -79,8 +79,10 @@ export class Engine {
 	private callbacks: EngineCallbacks;
 	private smoothClock = new SmoothClock();
 
-	private lastStateUpdateMs = 0;
-	private lastIncomingStr = '';
+	private pressedKeys: Set<string> = new Set();
+	private incomingKeys: Set<string> = new Set();
+	private keyboardEl: HTMLElement | null = null;
+	private keyElements: HTMLElement[] = [];
 
 	constructor(
 		canvasEl: HTMLCanvasElement,
@@ -101,6 +103,7 @@ export class Engine {
 		this.state.onMissCallback = (note, comboBefore) => {
 			const finger = getFingerForKey(note.char, this.layout);
 			this.callbacks.onHit('miss', note.char, finger, 0, comboBefore);
+			this.callbacks.onStateUpdate(this.state);
 		};
 
 		this.ready = this.init(canvasEl).catch(console.error);
@@ -137,7 +140,11 @@ export class Engine {
 			onEnter: () => {
 				if (this.finished) window.location.reload();
 			},
-			onPressedKeysChange: this.callbacks.onPressedKeysChange
+			onPressedKeysChange: (keys) => {
+				this.pressedKeys = keys;
+				this.updateKeyboardDOM();
+				this.callbacks.onPressedKeysChange(keys);
+			}
 		});
 
 		const COUNTDOWN_SEC = 3.0;
@@ -177,7 +184,6 @@ export class Engine {
 	private tick() {
 		if (!this.app || !this.running || this.isPaused) return;
 
-		const missBefore = this.state.miss;
 		const manifestOffset = this.state.manifest.audioOffset || 0;
 		const rawAudioTimeMs = getPlaybackTime() * 1000 + manifestOffset;
 
@@ -186,24 +192,14 @@ export class Engine {
 		// Rendu ultra-fluide 60/120/144 FPS
 		this.renderer.updateNotes(this.state, currentTimeMs + this.visualOffsetMs, this.layout);
 
-		// Optimisation des callbacks UI Svelte (Throttling 30fps maximum pour éviter les reflows DOM)
-		const now = performance.now();
-		if (now - this.lastStateUpdateMs > 33) {
-			this.lastStateUpdateMs = now;
-
-			const incomingKeys = new Set<string>();
-			for (const note of this.renderer.pool.getActive()) {
-				if (note.container.x > this.renderer.hitLineX && note.container.x < this.renderer.hitLineX + 300) {
-					incomingKeys.add(note.char.toLowerCase());
-				}
-			}
-
-			const incomingStr = Array.from(incomingKeys).sort().join(',');
-			if (incomingStr !== this.lastIncomingStr || missBefore !== this.state.miss) {
-				this.lastIncomingStr = incomingStr;
-				this.callbacks.onStateUpdate(this.state, incomingKeys);
+		// Calculer les touches "incoming" de manière optimisée
+		this.incomingKeys.clear();
+		for (const note of this.renderer.pool.getActive()) {
+			if (note.container.x > this.renderer.hitLineX && note.container.x < this.renderer.hitLineX + 300) {
+				this.incomingKeys.add(note.char.toLowerCase());
 			}
 		}
+		this.updateKeyboardDOM();
 
 		if (
 			!this.finished &&
@@ -216,6 +212,75 @@ export class Engine {
 			setTimeout(() => {
 				this.callbacks.onFinish();
 			}, 1500);
+		}
+	}
+
+	private initKeyboardElements() {
+		if (!this.keyboardEl) {
+			this.keyboardEl = document.getElementById('game-keyboard-container');
+		}
+		if (!this.keyboardEl) return;
+		this.keyElements = Array.from(this.keyboardEl.querySelectorAll('.keyboard-key')) as HTMLElement[];
+	}
+
+	private updateKeyboardDOM() {
+		if (this.keyElements.length === 0) {
+			this.initKeyboardElements();
+		}
+		if (this.keyElements.length === 0) return;
+
+		for (const htmlEl of this.keyElements) {
+			const unlocked = htmlEl.dataset.unlocked === 'true';
+			if (!unlocked) continue;
+
+			const char = htmlEl.dataset.key || '';
+			const code = htmlEl.dataset.code || '';
+			
+			const isPressed = this.pressedKeys.has(code) || this.pressedKeys.has(char);
+			const isIncoming = this.incomingKeys.has(char);
+
+			const wasPressed = htmlEl.dataset.statePressed === 'true';
+			const wasIncoming = htmlEl.dataset.stateIncoming === 'true';
+
+			if (isPressed === wasPressed && isIncoming === wasIncoming) {
+				continue; // Aucun changement d'état, évite d'écrire dans le DOM
+			}
+
+			htmlEl.dataset.statePressed = isPressed ? 'true' : 'false';
+			htmlEl.dataset.stateIncoming = isIncoming ? 'true' : 'false';
+
+			const fingerColor = htmlEl.dataset.fingerColor || '';
+			const lightText = htmlEl.dataset.lightText === 'true';
+			const isModifier = htmlEl.dataset.modifier === 'true';
+			const dotEl = htmlEl.querySelector('.keyboard-dot') as HTMLElement;
+
+			htmlEl.classList.remove('translate-x-[2px]', 'translate-y-[2px]', 'shadow-none', 'animate-pulse', 'bg-bg', 'text-text', 'hover:border-text-dim');
+
+			if (isPressed) {
+				htmlEl.classList.add('translate-x-[2px]', 'translate-y-[2px]', 'shadow-none');
+				htmlEl.style.backgroundColor = fingerColor;
+				htmlEl.style.color = lightText ? '#ffffff' : '#150029';
+				htmlEl.style.borderColor = '#0B0014';
+				htmlEl.style.boxShadow = 'none';
+				if (dotEl) dotEl.style.opacity = '0';
+			} else if (isIncoming) {
+				htmlEl.classList.add('animate-pulse');
+				htmlEl.style.backgroundColor = fingerColor + '33';
+				htmlEl.style.borderColor = fingerColor;
+				htmlEl.style.color = fingerColor;
+				htmlEl.style.boxShadow = `2px 2px 0px 0px ${fingerColor}`;
+				if (dotEl) dotEl.style.opacity = '1';
+			} else {
+				htmlEl.classList.add('bg-bg', 'text-text', 'hover:border-text-dim');
+				htmlEl.style.backgroundColor = '';
+				htmlEl.style.color = '';
+				htmlEl.style.borderColor = '';
+				htmlEl.style.boxShadow = '';
+				if (isModifier) {
+					htmlEl.style.borderColor = '#f9564f';
+				}
+				if (dotEl) dotEl.style.opacity = '1';
+			}
 		}
 	}
 
@@ -248,9 +313,10 @@ export class Engine {
 
 			this.renderer.spawnHitSpark(this.renderer.hitLineX, this.app!.screen.height * 0.38, color);
 
-			const finger = layoutKey.finger || getFingerForKey(layoutKey.char, this.layout);
+			const finger = layoutKey.char || getFingerForKey(layoutKey.char, this.layout);
 
 			this.callbacks.onHit(rating, layoutKey.char, finger, deltaMs);
+			this.callbacks.onStateUpdate(this.state);
 		}
 	}
 
