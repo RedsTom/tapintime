@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { createSlider, melt } from '@melt-ui/svelte';
-
 	let {
 		value = $bindable(50),
 		min = 0,
@@ -18,27 +16,6 @@
 		label?: string;
 		onchange?: () => void;
 	} = $props();
-
-	// svelte-ignore state_referenced_locally
-	const {
-		elements: { root, range, thumbs },
-		states: { value: meltValue }
-	} = createSlider({
-		defaultValue: [value],
-		min,
-		max,
-		step,
-		disabled
-	});
-
-	// One-way: melt internal state → bindable prop
-	$effect(() => {
-		const val = $meltValue[0];
-		if (value !== val) {
-			value = val;
-			onchange?.();
-		}
-	});
 </script>
 
 <div class="flex flex-col gap-2 w-full select-none">
@@ -48,16 +25,30 @@
 			<span class="text-primary font-black bg-secondary border-2 border-secondary px-2 py-0.5 rounded">{value}</span>
 		</div>
 	{/if}
-	<span 
-		use:melt={$root} 
-		class="relative flex h-6 w-full touch-none select-none items-center cursor-pointer disabled:opacity-50"
-	>
-		<span class="relative h-4 w-full grow rounded-full bg-secondary/80 border-4 border-secondary overflow-hidden">
-			<span use:melt={$range} class="absolute h-full bg-accent"></span>
-		</span>
-		<span 
-			use:melt={$thumbs[0]} 
-			class="block h-7 w-7 rounded-md border-4 border-secondary bg-primary hover:bg-accent transition-all cursor-grab active:cursor-grabbing shadow-none hover:scale-105 active:scale-95"
-		></span>
-	</span>
+	<div class="relative flex h-8 w-full items-center {disabled ? 'opacity-50' : ''}">
+		<!-- Track background -->
+		<div class="absolute w-full h-4 rounded-full bg-secondary/80 border-4 border-secondary overflow-hidden pointer-events-none top-2">
+			<!-- Track fill (accent) -->
+			<div 
+				class="absolute h-full bg-accent left-0 top-0 bottom-0 pointer-events-none" 
+				style="width: {((value - min) / (max - min)) * 100}%"
+			></div>
+		</div>
+		<!-- Native range input -->
+		<input 
+			type="range" 
+			{min} 
+			{max} 
+			{step} 
+			bind:value 
+			{disabled} 
+			onchange={onchange}
+			class="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-10 m-0 p-0" 
+		/>
+		<!-- Custom thumb element (visually follows the input) -->
+		<div 
+			class="absolute h-7 w-7 rounded-md border-4 border-secondary bg-primary pointer-events-none top-0.5"
+			style="left: calc({((value - min) / (max - min)) * 100}% - 14px);"
+		></div>
+	</div>
 </div>
