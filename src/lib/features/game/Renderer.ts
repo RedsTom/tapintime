@@ -15,13 +15,10 @@ export interface TimingWindows {
  * Coordonnateur de rendu Canvas 2D / WebGL via PixiJS.
  * Gère la piste, la ligne d'impact, les zones de timing translucides, le défilement fluide des notes et les effets de frappe.
  *
- * Optimisations :
- * - Couleurs pré-calculées en constantes numériques (zéro parseInt à chaque frame)
- * - Spark pooling avec swap-and-pop O(1) pour éliminer les stutters GC
- * - incomingKeys calculé directement dans la boucle de mise à jour des notes (zéro itération supplémentaire)
- * - travelTimeMs pré-calculé (ne change pas pendant le jeu)
- * - Animation réactive du caret (blink / scale bounce sans altérer sa couleur d'origine)
- * - Zones de timing (Perfect, Great, Good) discrètes avec bords arrondis, sous le caret et les notes
+ * Design : Sleek Neo-Brutalism Precision Gauge
+ * - Zones de timing fluides intégrées à la hauteur totale de la piste
+ * - Guide-lines verticales nettes démarquant Good, Great, Perfect
+ * - Animation réactive d'impulsion lumineuse du caret lors des frappes
  */
 export class Renderer {
 	private app: Application;
@@ -102,26 +99,27 @@ export class Renderer {
 		const trackHeight = 110 + (totalLanes - 1) * laneSpacing;
 		const trackRadius = 16;
 		const hitLineX = this.hitLineX;
+		const topY = yCenter - trackHeight / 2;
 
-		// Piste de jeu Neo-Brutalism
+		// 1. Piste de jeu Neo-Brutalism (Fond sombre + bordure brillante)
 		const trackLane = new Graphics();
 		trackLane
 			.roundRect(
 				margin,
-				yCenter - trackHeight / 2,
+				topY,
 				this.app.screen.width - margin * 2,
 				trackHeight,
 				trackRadius
 			)
-			.fill({ color: COLORS_HEX.secondary, alpha: 0.9 })
+			.fill({ color: COLORS_HEX.secondary, alpha: 0.92 })
 			.stroke({ width: 4, color: COLORS_HEX.primary, alpha: 1.0 });
 		this.app.stage.addChild(trackLane);
 
-		// Masque de rognage pour la piste (conserve le contenu dans les limites arrondies)
+		// 2. Masque de rognage de la piste (rognage parfait sans débordement)
 		const trackMask = new Graphics()
 			.roundRect(
 				margin + 2,
-				yCenter - trackHeight / 2 + 2,
+				topY + 2,
 				this.app.screen.width - margin * 2 - 4,
 				trackHeight - 4,
 				trackRadius - 2
@@ -129,56 +127,62 @@ export class Renderer {
 			.fill({ color: 0xffffff });
 		this.app.stage.addChild(trackMask);
 
-		// --- ZONES DE TIMING TRANSLUCIDES & DISCRÈTES SUR LE FOND DE LA PARTITION ---
+		// 3. --- ZONES DE TIMING SUR LE FOND DE LA PARTITION (FULL-HEIGHT SEAMLESS GAUGE) ---
 		const timingContainer = new Container();
 		timingContainer.mask = trackMask;
 
 		const windows = timingWindows ?? { perfectWindow: 80, greatWindow: 160, goodWindow: 240 };
-		const topY = yCenter - trackHeight / 2;
 
-		// 1. Zone Good (Extérieure - Bleu très discret avec bords arrondis)
 		const dxGood = (windows.goodWindow / 1000) * this.noteSpeed;
+		const dxGreat = (windows.greatWindow / 1000) * this.noteSpeed;
+		const dxPerfect = (windows.perfectWindow / 1000) * this.noteSpeed;
+
+		// Bande Good (Bleu néon translucide)
 		const goodZone = new Graphics()
-			.roundRect(hitLineX - dxGood, topY + 4, dxGood * 2, trackHeight - 8, 12)
-			.fill({ color: COLORS_HEX.good, alpha: 0.05 });
+			.rect(hitLineX - dxGood, topY, dxGood * 2, trackHeight)
+			.fill({ color: COLORS_HEX.good, alpha: 0.08 });
 		timingContainer.addChild(goodZone);
 
-		// 2. Zone Great (Intermédiaire - Vert discret avec bords arrondis)
-		const dxGreat = (windows.greatWindow / 1000) * this.noteSpeed;
+		// Bande Great (Vert néon translucide)
 		const greatZone = new Graphics()
-			.roundRect(hitLineX - dxGreat, topY + 4, dxGreat * 2, trackHeight - 8, 10)
-			.fill({ color: COLORS_HEX.great, alpha: 0.09 });
+			.rect(hitLineX - dxGreat, topY, dxGreat * 2, trackHeight)
+			.fill({ color: COLORS_HEX.great, alpha: 0.12 });
 		timingContainer.addChild(greatZone);
 
-		// 3. Zone Perfect (Centre / Caret - Jaune Or discret avec bords arrondis)
-		const dxPerfect = (windows.perfectWindow / 1000) * this.noteSpeed;
+		// Bande Perfect (Or/Jaune néon translucide)
 		const perfectZone = new Graphics()
-			.roundRect(hitLineX - dxPerfect, topY + 4, dxPerfect * 2, trackHeight - 8, 8)
-			.fill({ color: COLORS_HEX.perfect, alpha: 0.14 })
-			.stroke({ width: 1.5, color: COLORS_HEX.perfect, alpha: 0.25 });
+			.rect(hitLineX - dxPerfect, topY, dxPerfect * 2, trackHeight)
+			.fill({ color: COLORS_HEX.perfect, alpha: 0.18 });
 		timingContainer.addChild(perfectZone);
 
-		// Graduations / Ticks visuels subtils en haut et en bas des bordures de timing
-		const ticksGfx = new Graphics();
-		const tickHeight = 6;
-		[
-			{ dx: dxGood, color: COLORS_HEX.good },
-			{ dx: dxGreat, color: COLORS_HEX.great },
-			{ dx: dxPerfect, color: COLORS_HEX.perfect }
-		].forEach(({ dx, color }) => {
-			[-dx, dx].forEach((offsetX) => {
-				const posX = hitLineX + offsetX;
-				ticksGfx
-					.rect(posX - 1, topY + 4, 2, tickHeight)
-					.fill({ color, alpha: 0.4 })
-					.rect(posX - 1, topY + trackHeight - 4 - tickHeight, 2, tickHeight)
-					.fill({ color, alpha: 0.4 });
-			});
-		});
-		timingContainer.addChild(ticksGfx);
+		// Lignes guide verticales épurées démarquant chaque seuil de timing
+		const guideLinesGfx = new Graphics();
+		
+		// Seuil Good (Bleu)
+		guideLinesGfx
+			.rect(hitLineX - dxGood - 1, topY, 2, trackHeight)
+			.fill({ color: COLORS_HEX.good, alpha: 0.35 })
+			.rect(hitLineX + dxGood - 1, topY, 2, trackHeight)
+			.fill({ color: COLORS_HEX.good, alpha: 0.35 });
+
+		// Seuil Great (Vert)
+		guideLinesGfx
+			.rect(hitLineX - dxGreat - 1, topY, 2, trackHeight)
+			.fill({ color: COLORS_HEX.great, alpha: 0.45 })
+			.rect(hitLineX + dxGreat - 1, topY, 2, trackHeight)
+			.fill({ color: COLORS_HEX.great, alpha: 0.45 });
+
+		// Seuil Perfect (Or)
+		guideLinesGfx
+			.rect(hitLineX - dxPerfect - 1, topY, 2, trackHeight)
+			.fill({ color: COLORS_HEX.perfect, alpha: 0.65 })
+			.rect(hitLineX + dxPerfect - 1, topY, 2, trackHeight)
+			.fill({ color: COLORS_HEX.perfect, alpha: 0.65 });
+
+		timingContainer.addChild(guideLinesGfx);
 		this.app.stage.addChild(timingContainer);
 
-		// Zone de frappe et ligne laser (Caret au-dessus du fond de timing)
+		// 4. Zone de frappe et ligne laser (Caret au-dessus de la jauge)
 		const hitLine = new Container();
 		this.targetZoneGfxList = [];
 		
@@ -200,7 +204,7 @@ export class Renderer {
 		hitLine.position.set(hitLineX, yCenter);
 		this.app.stage.addChild(hitLine);
 
-		// Conteneur de notes avec masque de rognage (au-dessus du caret et du timing)
+		// 5. Conteneur de notes avec masque (au-dessus du caret et de la jauge)
 		const noteContainer = new Container();
 		noteContainer.mask = trackMask;
 		this.app.stage.addChild(noteContainer);
@@ -243,7 +247,7 @@ export class Renderer {
 	}
 
 	/**
-	 * Déclenche une animation visuelle (impulsion + blink d'intensité) sur le caret lors d'un hit.
+	 * Déclenche une animation visuelle (impulsion d'échelle + surge lumineux) sur le caret lors d'un hit.
 	 */
 	public triggerCaretPulse() {
 		this.caretPulseLife = 1.0;
@@ -251,19 +255,19 @@ export class Renderer {
 
 	/**
 	 * Met à jour l'animation de clignotement et d'impulsion du caret à chaque frame.
-	 * Conserve impérativement la couleur d'origine du caret sans la teinter.
+	 * Conserve la couleur d'origine du caret.
 	 */
 	private updateCaretAnimation() {
 		if (this.caretPulseLife > 0) {
-			this.caretPulseLife -= 0.09;
+			this.caretPulseLife -= 0.10;
 			const life = Math.max(0, this.caretPulseLife);
 
 			// Animation d'impulsion d'échelle sur le caret (bounce dynamique)
-			const scale = 1.0 + life * 0.16;
+			const scale = 1.0 + life * 0.14;
 			this.hitLine.scale.set(scale, scale);
 
-			// Flash de clignotement / luminosité (alpha) sans changer la couleur du caret
-			this.laserLineGfx.alpha = 1.0 + life * 0.5;
+			// Flash lumineux sur la ligne laser (surge d'intensité) sans changer sa couleur
+			this.laserLineGfx.alpha = 1.0 + life * 0.4;
 
 			for (const zone of this.targetZoneGfxList) {
 				zone.alpha = 1.0 + life * 0.3;
@@ -283,7 +287,7 @@ export class Renderer {
 	 * Anime également le caret.
 	 */
 	public spawnHitSpark(x: number, y: number, color: number) {
-		// Animer le caret (impulsion + blink sans changement de couleur)
+		// Animer le caret (impulsion + surge lumineux)
 		this.triggerCaretPulse();
 
 		let spark = this.sparkPool.pop();
