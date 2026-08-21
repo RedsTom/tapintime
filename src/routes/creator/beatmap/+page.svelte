@@ -35,6 +35,15 @@
 					if (customMap.audioBlob) {
 						editor.setAudioTrack(customMap.audioBlob, 'Piste Audio Enregistrée');
 					}
+					if (customMap.bgBlob) {
+						editor.bgFile = customMap.bgBlob;
+						editor.isVideo = !!customMap.isVideo;
+						editor.bgFileName = customMap.isVideo ? 'Vidéo de Fond' : 'Image de Fond';
+					}
+					if (customMap.coverBlob) {
+						editor.coverFile = customMap.coverBlob;
+						editor.coverFileName = 'Miniature Carrée';
+					}
 				}
 			}
 		}
@@ -107,6 +116,24 @@
 		editor.setAudioTrack(file, file.name);
 	}
 
+	function handleBgMediaUpload(e: Event) {
+		const input = e.target as HTMLInputElement;
+		if (!input.files || input.files.length === 0) return;
+		const file = input.files[0];
+		const isVideo = file.type.startsWith('video/') || /\.(mp4|webm|avi|mkv)$/i.test(file.name);
+		editor.bgFile = file;
+		editor.bgFileName = file.name;
+		editor.isVideo = isVideo;
+	}
+
+	function handleCoverUpload(e: Event) {
+		const input = e.target as HTMLInputElement;
+		if (!input.files || input.files.length === 0) return;
+		const file = input.files[0];
+		editor.coverFile = file;
+		editor.coverFileName = file.name;
+	}
+
 	async function handleOsuOrOszImport(e: Event) {
 		const input = e.target as HTMLInputElement;
 		if (!input.files || input.files.length === 0) return;
@@ -118,6 +145,15 @@
 				const pkg = await parseOszFile(file);
 				if (pkg.audioBlob) {
 					editor.setAudioTrack(pkg.audioBlob, pkg.audioFilename || 'audio.mp3');
+				}
+				if (pkg.bgBlob) {
+					editor.bgFile = pkg.bgBlob;
+					editor.isVideo = !!pkg.isVideo;
+					editor.bgFileName = pkg.isVideo ? 'Vidéo osu!' : 'Image de Fond osu!';
+				}
+				if (pkg.coverBlob) {
+					editor.coverFile = pkg.coverBlob;
+					editor.coverFileName = 'Miniature osu!';
 				}
 				if (pkg.difficulties.length === 1) {
 					loadOszDifficulty(pkg.difficulties[0]);
@@ -212,11 +248,11 @@
 				</div>
 			</div>
 
-			<!-- Fichiers Audio & Imports -->
+			<!-- Fichiers Audio & Médias -->
 			<div class="bg-surface border-4 border-secondary p-4 rounded-xl shadow-[5px_5px_0px_#ff3366] flex flex-col gap-2.5">
 				<h3 class="text-xs font-black uppercase tracking-wider text-accent border-b-2 border-secondary pb-1 flex items-center gap-1.5">
 					<FileMusic class="w-3.5 h-3.5" />
-					Fichiers Audio
+					Fichiers Audio & Médias
 				</h3>
 
 				<div class="flex flex-col gap-1">
@@ -224,6 +260,22 @@
 					<label class="border-2 border-secondary bg-secondary/20 hover:bg-secondary/40 p-2 rounded-lg flex items-center justify-center gap-2 text-xs font-black uppercase cursor-pointer transition-all">
 						<Upload class="w-3.5 h-3.5" /> {editor.audioFileName ? editor.audioFileName : 'Choisir un fichier audio'}
 						<input type="file" accept="audio/*" onchange={handleAudioUpload} class="sr-only" />
+					</label>
+				</div>
+
+				<div class="flex flex-col gap-1">
+					<span class="text-[10px] font-black uppercase tracking-wider text-text-dim">Fond Niveau (Image / Vidéo)</span>
+					<label class="border-2 border-secondary bg-secondary/20 hover:bg-secondary/40 p-2 rounded-lg flex items-center justify-center gap-2 text-xs font-black uppercase cursor-pointer transition-all">
+						<Upload class="w-3.5 h-3.5" /> {editor.bgFileName ? editor.bgFileName : 'Choisir image ou vidéo'}
+						<input type="file" accept="image/*,video/*" onchange={handleBgMediaUpload} class="sr-only" />
+					</label>
+				</div>
+
+				<div class="flex flex-col gap-1">
+					<span class="text-[10px] font-black uppercase tracking-wider text-text-dim">Miniature Son (Carrée)</span>
+					<label class="border-2 border-secondary bg-secondary/20 hover:bg-secondary/40 p-2 rounded-lg flex items-center justify-center gap-2 text-xs font-black uppercase cursor-pointer transition-all">
+						<Upload class="w-3.5 h-3.5" /> {editor.coverFileName ? editor.coverFileName : 'Choisir miniature'}
+						<input type="file" accept="image/*" onchange={handleCoverUpload} class="sr-only" />
 					</label>
 				</div>
 

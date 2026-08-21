@@ -24,6 +24,13 @@ export class BeatmapEditorState {
 	public audioUrl = $state<string | null>(null);
 	public audioElement = $state<HTMLAudioElement | null>(null);
 
+	// Médias de Fond & Miniature / Cover
+	public bgFile = $state<File | Blob | null>(null);
+	public bgFileName = $state<string>('');
+	public coverFile = $state<File | Blob | null>(null);
+	public coverFileName = $state<string>('');
+	public isVideo = $state<boolean>(false);
+
 	public isPlaying = $state(false);
 	public currentTime = $state(0); // en secondes
 	public duration = $state(0);
@@ -318,6 +325,9 @@ export class BeatmapEditorState {
 			difficulty: this.difficulty,
 			manifest,
 			audioBlob,
+			bgBlob: this.bgFile || undefined,
+			coverBlob: this.coverFile || undefined,
+			isVideo: this.isVideo,
 			createdAt: Date.now()
 		});
 
@@ -345,6 +355,14 @@ export class BeatmapEditorState {
 
 		if (this.audioFile) {
 			zip.file('audio.mp3', this.audioFile);
+		}
+
+		if (this.bgFile) {
+			zip.file(this.isVideo ? 'bg.mp4' : 'bg.jpg', this.bgFile);
+		}
+
+		if (this.coverFile) {
+			zip.file('cover.jpg', this.coverFile);
 		}
 
 		const blob = await zip.generateAsync({ type: 'blob' });
