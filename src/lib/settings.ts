@@ -1,6 +1,7 @@
 import localforage from 'localforage';
 
 export interface UserSettings {
+	language: 'fr' | 'en';
 	showKeyboard: boolean;
 	keyboardScale: number;
 	masterVolume: number;
@@ -19,6 +20,7 @@ export interface UserSettings {
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
+	language: 'fr',
 	showKeyboard: true,
 	keyboardScale: 1.0,
 	masterVolume: 80,
