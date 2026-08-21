@@ -158,7 +158,7 @@ export class Engine {
 			autoDensity: true
 		});
 
-		this.renderer = new Renderer(this.app, this.state.totalLanes, this.noteSpeed);
+		this.renderer = new Renderer(this.app, this.state.totalLanes, this.noteSpeed, this.state.timingWindows);
 		
 		// Pré-allouer et chauffer le pool de notes pour éviter tout freeze au spawn
 		const requiredPoolSize = Math.max(
