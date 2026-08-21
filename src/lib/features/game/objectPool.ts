@@ -1,11 +1,11 @@
-import { Container, Graphics, Text } from 'pixi.js';
+import { Container, Graphics, Sprite, Texture, Text, Application } from 'pixi.js';
 import { COLORS_HEX, SPACING } from '$lib/tokens';
 import { isColorDark } from '$lib/fingerColors';
 
 export interface PooledNote {
 	container: Container;
 	bg: Graphics;
-	label: Text;
+	labelSprite: Sprite;
 	active: boolean;
 	missed: boolean;
 	char: string;
@@ -15,12 +15,39 @@ export interface PooledNote {
 	activeIndex: number;
 }
 
+const charTextureCache: Map<string, Texture> = new Map();
+
+/**
+ * Pré-génère toutes les textures de texte de caractères pendant la phase de chargement de la map.
+ * Évite d'instancier PixiJS Text ou de re-dessiner du canvas 2D pendant le gameplay.
+ */
+export function preRenderCharTextures(app: Application, chars: string[]): void {
+	const uniqueChars = Array.from(new Set(chars.map((c) => c.toLowerCase())));
+	for (const char of uniqueChars) {
+		if (charTextureCache.has(char)) continue;
+
+		const tempText = new Text({
+			text: char.toUpperCase(),
+			style: {
+				fontFamily: 'system-ui, sans-serif',
+				fontSize: 36,
+				fontWeight: '900',
+				fill: 0xffffff // Dessin en blanc pour pouvoir teinter via Sprite.tint en O(1)
+			}
+		});
+		const texture = app.renderer.generateTexture(tempText);
+		charTextureCache.set(char, texture);
+		tempText.destroy();
+	}
+}
+
 /**
  * Gestionnaire d'Object Pooling pour le recyclage des conteneurs de notes PixiJS.
  * Évite les allocations mémoires fréquentes pendant la boucle de jeu.
  *
  * Optimisations clés :
- * - Les Graphics de fond sont dessinées UNE SEULE FOIS en blanc, puis colorées via `tint` (zéro rebuild GPU)
+ * - Les fond Graphics sont dessinées UNE SEULE FOIS en blanc, puis colorées via `tint` (zéro rebuild GPU)
+ * - Les étiquettes de caractères utilisent des Sprites pré-rendus (zéro Canvas Text rasterization pendant le jeu)
  * - Le retrait du tableau actif utilise swap-and-pop O(1) au lieu de splice O(n)
  */
 export class NotePool {
@@ -48,34 +75,25 @@ export class NotePool {
 		const container = new Container();
 
 		// Dessiner le fond en BLANC une seule fois — la couleur sera appliquée via `tint`
-		// Cela évite de reconstruire la géométrie GPU à chaque acquire()
 		const bg = new Graphics()
 			.roundRect(-36, -36, 72, 72, 12)
 			.fill({ color: 0xFFFFFF })
 			.stroke({ width: SPACING.borderWidth, color: COLORS_HEX.secondary });
 
-		const label = new Text({
-			text: '',
-			style: {
-				fontFamily: 'system-ui, sans-serif',
-				fontSize: 36,
-				fontWeight: '900',
-				fill: COLORS_HEX.bg
-			}
-		});
-		label.anchor.set(0.5);
-		label.position.set(0, 0);
+		const labelSprite = new Sprite();
+		labelSprite.anchor.set(0.5);
+		labelSprite.position.set(0, 0);
 
 		container.addChild(bg);
-		container.addChild(label);
+		container.addChild(labelSprite);
 		container.visible = false;
 
-		return { container, bg, label, active: false, missed: false, char: '', time: 0, activeIndex: -1 };
+		return { container, bg, labelSprite, active: false, missed: false, char: '', time: 0, activeIndex: -1 };
 	}
 
 	/**
-	 * Récupère ou instancie une note disponible depuis le pool.
-	 * Utilise `tint` pour coloriser au lieu de reconstruire la géométrie GPU.
+	 * Récupère une note disponible depuis le pool.
+	 * Utilise `tint` et des textures pré-générées pour un coût nul pendant la frame.
 	 */
 	acquire(char: string, time: number, fingerColor: string = '#FFD500', laneIndex: number = 0): PooledNote {
 		let note: PooledNote;
@@ -91,14 +109,19 @@ export class NotePool {
 		note.missed = false;
 		note.laneIndex = laneIndex;
 		note.container.alpha = 1.0;
-		note.label.text = char.toUpperCase();
+
+		const charLower = char.toLowerCase();
+		const texture = charTextureCache.get(charLower);
+		if (texture) {
+			note.labelSprite.texture = texture;
+		}
 
 		// Coloriser via tint — O(1), zéro allocation GPU
 		const colorHex = parseInt(fingerColor.replace('#', ''), 16);
 		note.bg.tint = colorHex;
 
 		const textColor = isColorDark(fingerColor) ? 0xffffff : COLORS_HEX.bg;
-		note.label.style.fill = textColor;
+		note.labelSprite.tint = textColor;
 
 		note.container.visible = true;
 		note.active = true;

@@ -1,4 +1,4 @@
-import { Application, Container, Graphics } from 'pixi.js';
+import { Application, Container, Graphics, Sprite, Texture, Text } from 'pixi.js';
 import { COLORS_HEX, GAME } from '$lib/tokens';
 import { NotePool } from './objectPool';
 import type { GameState } from './GameState';
@@ -11,14 +11,46 @@ export interface TimingWindows {
 	goodWindow: number;
 }
 
+const ratingTextureCache: Map<string, Texture> = new Map();
+
+/**
+ * Pré-rend les textures des textes de feedback de précision (PERFECT, GREAT, GOOD, MISS!)
+ * pendant la phase de chargement de la carte. Évite toute allocation/rasterization pendant le jeu.
+ */
+export function preRenderRatingTextures(app: Application): void {
+	const ratings: { key: string; text: string; color: number }[] = [
+		{ key: 'perfect', text: 'PERFECT', color: COLORS_HEX.perfect },
+		{ key: 'great', text: 'GREAT', color: COLORS_HEX.great },
+		{ key: 'good', text: 'GOOD', color: COLORS_HEX.good },
+		{ key: 'miss', text: 'MISS!', color: COLORS_HEX.miss }
+	];
+
+	for (const r of ratings) {
+		if (ratingTextureCache.has(r.key)) continue;
+
+		const textObj = new Text({
+			text: r.text,
+			style: {
+				fontFamily: 'system-ui, sans-serif',
+				fontSize: 42,
+				fontWeight: '900',
+				fill: r.color,
+				stroke: { width: 5, color: COLORS_HEX.secondary }
+			}
+		});
+		const texture = app.renderer.generateTexture(textObj);
+		ratingTextureCache.set(r.key, texture);
+		textObj.destroy();
+	}
+}
+
 /**
  * Coordonnateur de rendu Canvas 2D / WebGL via PixiJS.
  * Gère la piste, la ligne d'impact, les zones de timing translucides, le défilement fluide des notes et les effets de frappe.
  *
  * Design : Sleek Neo-Brutalism Precision Gauge
- * - Zones de timing fluides intégrées à la hauteur totale de la piste
- * - Guide-lines verticales nettes démarquant Good, Great, Perfect
- * - Animation réactive d'impulsion lumineuse du caret lors des frappes
+ * - Allouer et charger TOUTES les textures au chargement de la map
+ * - Rendu réactif natif Canvas du feedback de hit (0 modification DOM Svelte pendant le jeu)
  */
 export class Renderer {
 	private app: Application;
@@ -29,6 +61,10 @@ export class Renderer {
 	public noteContainer: Container;
 	public pool: NotePool;
 	public noteSpeed: number;
+
+	// Feedback visuel de rating (PERFECT, GREAT, GOOD, MISS!) rendu nativement dans PixiJS
+	private ratingSprite!: Sprite;
+	private ratingLife: number = 0;
 
 	// Spark pooling avec swap-and-pop pour éliminer les réallocations WebGL et les pauses GC
 	private sparkPool: Graphics[] = [];
@@ -57,6 +93,9 @@ export class Renderer {
 	) {
 		this.app = app;
 		this.noteSpeed = noteSpeed;
+
+		// Pré-rendre les textures de rating au chargement
+		preRenderRatingTextures(this.app);
 
 		this.hitSparks = new Container();
 		this.app.stage.addChild(this.hitSparks);
@@ -115,7 +154,7 @@ export class Renderer {
 			.stroke({ width: 4, color: COLORS_HEX.primary, alpha: 1.0 });
 		this.app.stage.addChild(trackLane);
 
-		// 2. Masque de rognage de la piste (rognage parfait sans débordement)
+		// 2. Masque de rognage de la piste
 		const trackMask = new Graphics()
 			.roundRect(
 				margin + 2,
@@ -127,7 +166,7 @@ export class Renderer {
 			.fill({ color: 0xffffff });
 		this.app.stage.addChild(trackMask);
 
-		// 3. --- ZONES DE TIMING SUR LE FOND DE LA PARTITION (FULL-HEIGHT SEAMLESS GAUGE) ---
+		// 3. --- ZONES DE TIMING SUR LE FOND DE LA PARTITION ---
 		const timingContainer = new Container();
 		timingContainer.mask = trackMask;
 
@@ -137,43 +176,35 @@ export class Renderer {
 		const dxGreat = (windows.greatWindow / 1000) * this.noteSpeed;
 		const dxPerfect = (windows.perfectWindow / 1000) * this.noteSpeed;
 
-		// Bande Good (Bleu néon translucide)
+		// Bande Good
 		const goodZone = new Graphics()
 			.rect(hitLineX - dxGood, topY, dxGood * 2, trackHeight)
 			.fill({ color: COLORS_HEX.good, alpha: 0.08 });
 		timingContainer.addChild(goodZone);
 
-		// Bande Great (Vert néon translucide)
+		// Bande Great
 		const greatZone = new Graphics()
 			.rect(hitLineX - dxGreat, topY, dxGreat * 2, trackHeight)
 			.fill({ color: COLORS_HEX.great, alpha: 0.12 });
 		timingContainer.addChild(greatZone);
 
-		// Bande Perfect (Or/Jaune néon translucide)
+		// Bande Perfect
 		const perfectZone = new Graphics()
 			.rect(hitLineX - dxPerfect, topY, dxPerfect * 2, trackHeight)
 			.fill({ color: COLORS_HEX.perfect, alpha: 0.18 });
 		timingContainer.addChild(perfectZone);
 
-		// Lignes guide verticales épurées démarquant chaque seuil de timing
+		// Lignes guide verticales épurées
 		const guideLinesGfx = new Graphics();
-		
-		// Seuil Good (Bleu)
 		guideLinesGfx
 			.rect(hitLineX - dxGood - 1, topY, 2, trackHeight)
 			.fill({ color: COLORS_HEX.good, alpha: 0.35 })
 			.rect(hitLineX + dxGood - 1, topY, 2, trackHeight)
-			.fill({ color: COLORS_HEX.good, alpha: 0.35 });
-
-		// Seuil Great (Vert)
-		guideLinesGfx
+			.fill({ color: COLORS_HEX.good, alpha: 0.35 })
 			.rect(hitLineX - dxGreat - 1, topY, 2, trackHeight)
 			.fill({ color: COLORS_HEX.great, alpha: 0.45 })
 			.rect(hitLineX + dxGreat - 1, topY, 2, trackHeight)
-			.fill({ color: COLORS_HEX.great, alpha: 0.45 });
-
-		// Seuil Perfect (Or)
-		guideLinesGfx
+			.fill({ color: COLORS_HEX.great, alpha: 0.45 })
 			.rect(hitLineX - dxPerfect - 1, topY, 2, trackHeight)
 			.fill({ color: COLORS_HEX.perfect, alpha: 0.65 })
 			.rect(hitLineX + dxPerfect - 1, topY, 2, trackHeight)
@@ -204,10 +235,17 @@ export class Renderer {
 		hitLine.position.set(hitLineX, yCenter);
 		this.app.stage.addChild(hitLine);
 
-		// 5. Conteneur de notes avec masque (au-dessus du caret et de la jauge)
+		// 5. Conteneur de notes avec masque
 		const noteContainer = new Container();
 		noteContainer.mask = trackMask;
 		this.app.stage.addChild(noteContainer);
+
+		// 6. Sprite de rating (PERFECT, GREAT, GOOD, MISS!) nativement sur le Canvas PixiJS
+		this.ratingSprite = new Sprite();
+		this.ratingSprite.anchor.set(0.5);
+		this.ratingSprite.position.set(hitLineX, topY - 32);
+		this.ratingSprite.visible = false;
+		this.app.stage.addChild(this.ratingSprite);
 
 		return { hitLine, noteContainer };
 	}
@@ -247,7 +285,19 @@ export class Renderer {
 	}
 
 	/**
-	 * Déclenche une animation visuelle (impulsion d'échelle + surge lumineux) sur le caret lors d'un hit.
+	 * Affiche le texte de feedback de précision (PERFECT, GREAT, GOOD, MISS!) nativement dans PixiJS Canvas.
+	 */
+	public showRating(rating: 'perfect' | 'great' | 'good' | 'miss') {
+		const texture = ratingTextureCache.get(rating);
+		if (texture) {
+			this.ratingSprite.texture = texture;
+			this.ratingSprite.visible = true;
+			this.ratingLife = 1.0;
+		}
+	}
+
+	/**
+	 * Déclenche une animation visuelle sur le caret lors d'un hit.
 	 */
 	public triggerCaretPulse() {
 		this.caretPulseLife = 1.0;
@@ -255,25 +305,21 @@ export class Renderer {
 
 	/**
 	 * Met à jour l'animation de clignotement et d'impulsion du caret à chaque frame.
-	 * Conserve la couleur d'origine du caret.
 	 */
 	private updateCaretAnimation() {
 		if (this.caretPulseLife > 0) {
 			this.caretPulseLife -= 0.10;
 			const life = Math.max(0, this.caretPulseLife);
 
-			// Animation d'impulsion d'échelle sur le caret (bounce dynamique)
 			const scale = 1.0 + life * 0.14;
 			this.hitLine.scale.set(scale, scale);
 
-			// Flash lumineux sur la ligne laser (surge d'intensité) sans changer sa couleur
 			this.laserLineGfx.alpha = 1.0 + life * 0.4;
 
 			for (const zone of this.targetZoneGfxList) {
 				zone.alpha = 1.0 + life * 0.3;
 			}
 		} else if (this.hitLine.scale.x !== 1.0) {
-			// Réinitialisation douce à l'état initial
 			this.hitLine.scale.set(1.0, 1.0);
 			this.laserLineGfx.alpha = 1.0;
 			for (const zone of this.targetZoneGfxList) {
@@ -283,11 +329,24 @@ export class Renderer {
 	}
 
 	/**
+	 * Met à jour l'animation du sprite de rating (scale pop + fade out).
+	 */
+	private updateRatingAnimation() {
+		if (this.ratingLife > 0) {
+			this.ratingLife -= 0.08;
+			const life = Math.max(0, this.ratingLife);
+			const scale = 0.85 + life * 0.35;
+			this.ratingSprite.scale.set(scale, scale);
+			this.ratingSprite.alpha = Math.min(1.0, life * 1.8);
+		} else if (this.ratingSprite.visible) {
+			this.ratingSprite.visible = false;
+		}
+	}
+
+	/**
 	 * Déclenche une étincelle/effet visuel lors d'une frappe réussie en utilisant le pool.
-	 * Anime également le caret.
 	 */
 	public spawnHitSpark(x: number, y: number, color: number) {
-		// Animer le caret (impulsion + surge lumineux)
 		this.triggerCaretPulse();
 
 		let spark = this.sparkPool.pop();
@@ -313,6 +372,7 @@ export class Renderer {
 		this.updateNotes(state, currentTimeMs, layout);
 		this.updateSparks();
 		this.updateCaretAnimation();
+		this.updateRatingAnimation();
 	}
 
 	/**
@@ -325,7 +385,6 @@ export class Renderer {
 			if (sparkObj.life <= 0) {
 				sparkObj.el.visible = false;
 				this.sparkPool.push(sparkObj.el);
-				// Swap-and-pop O(1) au lieu de splice O(n)
 				const lastIdx = this.activeSparks.length - 1;
 				if (i !== lastIdx) {
 					this.activeSparks[i] = this.activeSparks[lastIdx];
@@ -339,7 +398,6 @@ export class Renderer {
 
 	/**
 	 * Fait défiler les notes et gère leur apparition / disparition à chaque frame.
-	 * Calcule aussi les `incomingKeys` dans la même boucle (évite une itération supplémentaire).
 	 */
 	private updateNotes(state: GameState, currentTimeMs: number, layout?: Layout | null) {
 		const yCenter = this.app.screen.height * 0.38;
@@ -359,10 +417,9 @@ export class Renderer {
 			state.nextNoteIndex++;
 		}
 
-		// Calcul des incomingKeys : réutiliser le Set existant pour éviter toute allocation
+		// Calcul des incomingKeys
 		this.nextIncomingKeys.clear();
 
-		// Déplacement des notes actives + calcul incomingKeys dans la MÊME boucle
 		const activeNotes = this.pool.getActive();
 		for (let i = activeNotes.length - 1; i >= 0; i--) {
 			const note = activeNotes[i];
@@ -374,24 +431,20 @@ export class Renderer {
 			const laneY = this.getLaneY(note.laneIndex ?? 0, state.totalLanes, yCenter);
 			note.container.position.set(targetX, laneY);
 
-			// Calcul incomingKeys intégré — zéro itération supplémentaire
 			if (targetX > hitLineX && targetX < hitLineX + 300) {
 				this.nextIncomingKeys.add(note.char.toLowerCase());
 			}
 
-			// Détection des ratés (timing dépassé) sans faire disparaître la note immédiatement
 			if (!note.missed && currentTimeMs >= 0 && currentTimeMs - note.time > state.timingWindows.goodWindow) {
 				state.registerMiss(note);
-				note.container.alpha = 0.35; // Assombrissement / transparence de la note ratée
+				note.container.alpha = 0.35;
 			}
 
-			// Libération du pool uniquement quand la note a glissé jusqu'à l'extrême gauche de la piste
 			if (targetX <= 30) {
 				this.pool.release(note);
 			}
 		}
 
-		// Swap les Sets pour exposer les incomingKeys sans allocation
 		const temp = this.incomingKeys;
 		this.incomingKeys = this.nextIncomingKeys;
 		this.nextIncomingKeys = temp;

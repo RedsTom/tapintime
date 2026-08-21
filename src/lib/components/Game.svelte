@@ -115,13 +115,7 @@
 					onStateUpdate: (state) => {
 						scheduleHudUpdate(state);
 					},
-					onHit: (rating, char, finger, deltaMs, comboBeforeMiss) => {
-						lastRating = rating;
-						ratingOpacity = 1;
-						setTimeout(() => {
-							ratingOpacity = 0;
-						}, 150);
-
+					onHit: (rating, _char, _finger, _deltaMs, comboBeforeMiss) => {
 						if (rating === 'miss') {
 							// Son de fin de combo UNIQUEMENT si combo > 10
 							if (comboBeforeMiss && comboBeforeMiss > 10) {
@@ -130,16 +124,6 @@
 						} else {
 							// Son de hit dynamique à chaque frappe réussie
 							playHitSound();
-							if (deltaMs !== undefined) {
-								recordHitLatency(deltaMs);
-							}
-						}
-
-						if (finger) {
-							updateFingerStats(finger, rating);
-						}
-						if (char) {
-							updateKeyStats(char, rating);
 						}
 					},
 					onPauseChange: (paused) => {
@@ -291,23 +275,7 @@
 		</div>
 	</div>
 
-	<!-- Feedback visuel de frappe -->
-	{#if lastRating}
-		{@const ratingColor =
-			lastRating === 'perfect'
-				? 'text-perfect'
-				: lastRating === 'great'
-					? 'text-great'
-					: lastRating === 'good'
-						? 'text-good'
-						: 'text-miss'}
-		<div
-			class="absolute left-1/2 pointer-events-none select-none font-sans font-black text-3xl md:text-4xl uppercase tracking-widest text-center transition-all duration-100 ease-out {ratingColor}"
-			style="top: 26%; transform: translate(-50%, -50%) scale({ratingOpacity * 0.3 + 0.7}); opacity: {ratingOpacity}; text-shadow: 3px 3px 0px #0B0014;"
-		>
-			{lastRating === 'miss' ? 'miss!' : lastRating}
-		</div>
-	{/if}
+
 
 	<!-- Clavier Virtuel Overlay (DOM mis à jour manuellement par le moteur pour éviter les stutters) -->
 	{#if settings?.showKeyboard && !finished}

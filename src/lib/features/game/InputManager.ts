@@ -39,6 +39,11 @@ export class InputManager {
 				return;
 			}
 
+			// Empêcher le défilement navigateur ou raccourcis système sur les touches de jeu
+			if (e.code === 'Space' || e.code.startsWith('Key') || e.code.startsWith('Digit')) {
+				e.preventDefault();
+			}
+
 			if (e.code) this.pressedKeys.add(e.code);
 			this.pressedVersion++;
 			callbacks.onPressedKeysChange(this.pressedKeys, this.pressedVersion);

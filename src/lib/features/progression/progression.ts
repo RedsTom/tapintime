@@ -256,6 +256,9 @@ function queueSaveProgression(): void {
 /**
  * Enregistre un échantillon de latence de frappe.
  */
+/**
+ * Enregistre un échantillon de latence de frappe.
+ */
 export async function recordHitLatency(deltaMs: number): Promise<void> {
 	const prog = await loadProgression();
 	const samples = (prog.totalLatencySamples ?? 0) + 1;
@@ -267,6 +270,56 @@ export async function recordHitLatency(deltaMs: number): Promise<void> {
 	prog.averageLatencyMs = Math.round(avg);
 
 	queueSaveProgression();
+}
+
+/**
+ * Sauvegarde groupée de toutes les statistiques accumulées pendant une partie (doigts, touches, latence).
+ * Appelée UNE SEULE FOIS à la fin du niveau pour éviter les écritures IndexedDB / GC pendant le jeu.
+ */
+export async function batchSaveHitStats(
+	fingerStatsBuffer: Record<string, FingerStats>,
+	keyStatsBuffer: Record<string, FingerStats>,
+	hitLatencies: number[]
+): Promise<void> {
+	const prog = await loadProgression();
+
+	// Accumuler les stats de doigts
+	for (const [finger, stats] of Object.entries(fingerStatsBuffer)) {
+		if (!prog.fingerStats[finger]) {
+			prog.fingerStats[finger] = { totalHits: 0, perfect: 0, great: 0, good: 0, miss: 0 };
+		}
+		const s = prog.fingerStats[finger];
+		s.totalHits += stats.totalHits;
+		s.perfect += stats.perfect;
+		s.great += stats.great;
+		s.good += stats.good;
+		s.miss += stats.miss;
+	}
+
+	// Accumuler les stats de touches
+	for (const [key, stats] of Object.entries(keyStatsBuffer)) {
+		const kLower = key.toLowerCase();
+		if (!prog.keyStats[kLower]) {
+			prog.keyStats[kLower] = { totalHits: 0, perfect: 0, great: 0, good: 0, miss: 0 };
+		}
+		const s = prog.keyStats[kLower];
+		s.totalHits += stats.totalHits;
+		s.perfect += stats.perfect;
+		s.great += stats.great;
+		s.good += stats.good;
+		s.miss += stats.miss;
+	}
+
+	// Accumuler les échantillons de latence
+	if (hitLatencies.length > 0) {
+		const sum = hitLatencies.reduce((a, b) => a + b, 0);
+		const count = hitLatencies.length;
+		prog.totalLatencySamples = (prog.totalLatencySamples ?? 0) + count;
+		prog.accumulatedLatencyMs = (prog.accumulatedLatencyMs ?? 0) + sum;
+		prog.averageLatencyMs = Math.round(prog.accumulatedLatencyMs / prog.totalLatencySamples);
+	}
+
+	await saveProgression(prog);
 }
 
 /**

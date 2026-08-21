@@ -7,6 +7,8 @@ import type { Manifest } from '../beatmap/schemas/titm';
 import type { Layout, Key } from '../layout/schemas/titl';
 import { getFingerForKey } from '../layout/fingerColors';
 import { COLORS_HEX, GAME, type LeniencyMode } from '$lib/tokens';
+import { preRenderCharTextures } from './objectPool';
+import { batchSaveHitStats, type FingerStats } from '$lib/progression';
 
 export interface EngineCallbacks {
 	onStateUpdate: (state: GameState) => void;
@@ -62,11 +64,12 @@ class SmoothClock {
  * Orchestrateur principal du moteur de jeu.
  * Synchronise l'horloge audio, la saisie utilisateur et le rendu Canvas PixiJS.
  *
- * Optimisations :
- * - Map<keyCode, Key> pré-construit pour handleKeyPress O(1) au lieu de find() O(n)
- * - Throttle des mises à jour DOM du clavier virtuel (~100ms au lieu de chaque frame)
- * - incomingKeys lu depuis le Renderer (déjà calculé dans la boucle de rendu)
- * - Touches pressées : référence stable du Set, pas de new Set() à chaque événement
+ * Optimisations V2 (Zéro stutter pendant le jeu) :
+ * - Map Load Phase : pré-génération GPU de TOUTES les textures de caractères
+ * - Accumulation synchrone des statistiques en mémoire (0 écriture IndexedDB pendant le jeu)
+ * - Rendu 100% Canvas du feedback de précision (PERFECT, GREAT, GOOD, MISS!)
+ * - Map<keyCode, Key> pré-construit pour handleKeyPress O(1)
+ * - InputManager focalisé sur le canvas
  */
 export class Engine {
 	public app: Application | null = null;
@@ -101,6 +104,11 @@ export class Engine {
 	// Map pré-construit keyCode → Key pour lookup O(1)
 	private keyCodeMap: Map<string, Key> = new Map();
 
+	// Buffers synchrones des statistiques en mémoire (évite IndexedDB async pendant la frame)
+	public fingerStatsBuffer: Record<string, FingerStats> = {};
+	public keyStatsBuffer: Record<string, FingerStats> = {};
+	public hitLatenciesBuffer: number[] = [];
+
 	constructor(
 		canvasEl: HTMLCanvasElement,
 		manifest: Manifest,
@@ -124,6 +132,25 @@ export class Engine {
 
 		this.state.onMissCallback = (note, comboBefore) => {
 			const finger = getFingerForKey(note.char, this.layout);
+
+			// Afficher le feedback MISS! nativement sur le Canvas PixiJS
+			this.renderer?.showRating('miss');
+
+			// Accumuler les stats de miss en mémoire
+			if (finger) {
+				if (!this.fingerStatsBuffer[finger]) {
+					this.fingerStatsBuffer[finger] = { totalHits: 0, perfect: 0, great: 0, good: 0, miss: 0 };
+				}
+				this.fingerStatsBuffer[finger].totalHits++;
+				this.fingerStatsBuffer[finger].miss++;
+			}
+			const kLower = note.char.toLowerCase();
+			if (!this.keyStatsBuffer[kLower]) {
+				this.keyStatsBuffer[kLower] = { totalHits: 0, perfect: 0, great: 0, good: 0, miss: 0 };
+			}
+			this.keyStatsBuffer[kLower].totalHits++;
+			this.keyStatsBuffer[kLower].miss++;
+
 			this.callbacks.onHit('miss', note.char, finger, 0, comboBefore);
 			this.callbacks.onStateUpdate(this.state);
 		};
@@ -139,13 +166,16 @@ export class Engine {
 		if (!this.layout.layers[0]) return;
 		for (const key of this.layout.layers[0].keys) {
 			this.keyCodeMap.set(key.keyCode, key);
-			// Stocker aussi la version lowercase pour les cas insensibles
 			this.keyCodeMap.set(key.keyCode.toLowerCase(), key);
 		}
 	}
 
 	private async init(canvasEl: HTMLCanvasElement) {
 		await ensureAudioContextRunning();
+
+		// Focaliser le Canvas pour une gestion directe et sans lag des inputs
+		canvasEl.tabIndex = 0;
+		canvasEl.focus();
 
 		this.app = new Application();
 		await this.app.init({
@@ -158,9 +188,13 @@ export class Engine {
 			autoDensity: true
 		});
 
+		// 1. PRE-RENDER MAP LOAD PHASE : Générer TOUTES les textures GPU au chargement
+		const allChars = this.state.manifest.hitObjects.map((h) => h.char);
+		preRenderCharTextures(this.app, allChars);
+
 		this.renderer = new Renderer(this.app, this.state.totalLanes, this.noteSpeed, this.state.timingWindows);
 		
-		// Pré-allouer et chauffer le pool de notes pour éviter tout freeze au spawn
+		// Pré-allouer et chauffer le pool de notes
 		const requiredPoolSize = Math.max(
 			GAME.objectPoolSize,
 			Math.min(100, this.state.manifest.hitObjects.length)
@@ -224,8 +258,7 @@ export class Engine {
 
 		const currentTimeMs = this.smoothClock.update(rawAudioTimeMs);
 
-		// Rendu ultra-fluide 60/120/144 FPS
-		// Le Renderer calcule aussi incomingKeys dans la même boucle — zéro itération redondante
+		// Rendu Canvas 120/144 FPS
 		this.renderer.update(this.state, currentTimeMs + this.visualOffsetMs, this.layout);
 
 		// Mise à jour du clavier virtuel DOM — throttlée à ~100ms
@@ -244,6 +277,10 @@ export class Engine {
 			this.finished = true;
 			this.running = false;
 			this.inputManager.setFinished(true);
+
+			// Sauvegarder toutes les statistiques accumulées en masse à la fin de la partie
+			batchSaveHitStats(this.fingerStatsBuffer, this.keyStatsBuffer, this.hitLatenciesBuffer).catch(console.error);
+
 			setTimeout(() => {
 				this.callbacks.onFinish();
 			}, 1500);
@@ -268,9 +305,7 @@ export class Engine {
 	}
 
 	/**
-	 * Met à jour les états visuels du clavier virtuel DOM.
-	 * Throttlée à ~100ms car l'état "incoming" n'a pas besoin de 144 fps de précision.
-	 * Utilise un cache Map<string, HTMLElement> au lieu de querySelectorAll à chaque frame.
+	 * Met à jour les états visuels du clavier virtuel DOM (Throttlé).
 	 */
 	private updateKeyboardDOM() {
 		if (!this.keyElementsInitialized) {
@@ -278,7 +313,6 @@ export class Engine {
 		}
 		if (this.keyElementsMap.size === 0) return;
 
-		// Lire les incomingKeys directement depuis le Renderer (déjà calculé dans updateNotes)
 		const incomingKeys = this.renderer.incomingKeys;
 
 		for (const [, htmlEl] of this.keyElementsMap) {
@@ -295,7 +329,7 @@ export class Engine {
 			const wasIncoming = htmlEl.dataset.stateIncoming === 'true';
 
 			if (isPressed === wasPressed && isIncoming === wasIncoming) {
-				continue; // Aucun changement d'état, évite d'écrire dans le DOM
+				continue;
 			}
 
 			htmlEl.dataset.statePressed = isPressed ? 'true' : 'false';
@@ -341,7 +375,6 @@ export class Engine {
 		if (!this.running || this.isPaused) return;
 		if (getPlaybackTime() * 1000 < 0) return;
 
-		// Lookup O(1) via le Map pré-construit au lieu de Array.find() O(n)
 		let layoutKey = this.keyCodeMap.get(code);
 		if (!layoutKey) {
 			layoutKey = this.keyCodeMap.get(code.toLowerCase());
@@ -366,9 +399,32 @@ export class Engine {
 
 			const yCenter = this.app!.screen.height * 0.38;
 			const hitY = this.renderer.getLaneY(laneIndex, this.state.totalLanes, yCenter);
+
+			// 1. Particle hit spark
 			this.renderer.spawnHitSpark(this.renderer.hitLineX, hitY, color);
 
+			// 2. Feedback de rating (PERFECT, GREAT, GOOD) 100% Canvas WebGL
+			this.renderer.showRating(rating);
+
+			// 3. Accumuler les statistiques de frappe en mémoire (0ms cost, 0 IndexedDB call)
 			const finger = layoutKey.char || getFingerForKey(layoutKey.char, this.layout);
+			if (finger) {
+				if (!this.fingerStatsBuffer[finger]) {
+					this.fingerStatsBuffer[finger] = { totalHits: 0, perfect: 0, great: 0, good: 0, miss: 0 };
+				}
+				this.fingerStatsBuffer[finger].totalHits++;
+				this.fingerStatsBuffer[finger][rating]++;
+			}
+			const kLower = layoutKey.char.toLowerCase();
+			if (!this.keyStatsBuffer[kLower]) {
+				this.keyStatsBuffer[kLower] = { totalHits: 0, perfect: 0, great: 0, good: 0, miss: 0 };
+			}
+			this.keyStatsBuffer[kLower].totalHits++;
+			this.keyStatsBuffer[kLower][rating]++;
+
+			if (deltaMs !== undefined) {
+				this.hitLatenciesBuffer.push(deltaMs);
+			}
 
 			this.callbacks.onHit(rating, layoutKey.char, finger, deltaMs);
 			this.callbacks.onStateUpdate(this.state);
