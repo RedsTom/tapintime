@@ -6,16 +6,16 @@ import type { Finger, Layout } from './schemas/titl';
  * Main droite : tons froids / néon (Teal -> Bleu électrique -> Bleu royal -> Violet -> Magenta vif)
  */
 export const FINGER_COLORS: Record<Finger, string> = {
-	L_PINKY: '#FF2A6D',  // Neon Pink
-	L_RING: '#FF70A6',   // Soft Rose Pink
-	L_MIDDLE: '#FF9F1C', // Vivid Amber
-	L_INDEX: '#FFD500',  // Cyber Yellow
-	L_THUMB: '#2EC4B6',  // Turquoise
-	R_THUMB: '#00F5D4',  // Neon Cyan / Mint
-	R_INDEX: '#00BBF9',  // Electric Sky Blue
-	R_MIDDLE: '#4361EE', // Royal Blue / Indigo
-	R_RING: '#7209B7',   // Deep Violet / Purple
-	R_PINKY: '#F72585'   // Hot Magenta
+	L_PINKY: '#F94E6A',
+	L_RING: '#F9564F',
+	L_MIDDLE: '#F9984E',
+	L_INDEX: '#F9DC4E',
+	L_THUMB: '#4EF95C',
+	R_THUMB: '#4EF95C',
+	R_INDEX: '#5CC5FA',
+	R_MIDDLE: '#6B83FA',
+	R_RING: '#A57AFA',
+	R_PINKY: '#D385FA'
 };
 
 /**
