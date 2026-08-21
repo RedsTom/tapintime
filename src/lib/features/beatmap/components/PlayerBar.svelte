@@ -20,6 +20,21 @@
 		onDeselect?: () => void;
 	} = $props();
 
+	const effectiveCoverBlob = $derived(selectedMap?.coverBlob ?? (selectedMap?.isVideo ? undefined : selectedMap?.bgBlob));
+	let coverUrl = $state<string | null>(null);
+
+	$effect(() => {
+		if (effectiveCoverBlob) {
+			const url = URL.createObjectURL(effectiveCoverBlob);
+			coverUrl = url;
+			return () => {
+				URL.revokeObjectURL(url);
+			};
+		} else {
+			coverUrl = null;
+		}
+	});
+
 	const gradeColors: Record<RankGrade, string> = {
 		SS: '#ffc145',
 		S: '#80D39B',
@@ -33,7 +48,13 @@
 <div class="fixed bottom-0 inset-x-0 z-50 bg-surface/95 backdrop-blur-md border-t-4 border-secondary px-4 md:px-8 py-3 shadow-[0_-6px_0px_#1a0033] flex items-center justify-between gap-4 select-none">
 	<!-- Gauche: Informations de la map sélectionnée -->
 	<div class="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
-		{#if selectedMapScore}
+		{#if coverUrl}
+			<img
+				src={coverUrl}
+				alt={selectedMap.title}
+				class="w-12 h-12 rounded-xl border-2 border-secondary object-cover shrink-0 shadow-[2px_2px_0px_#1a0033]"
+			/>
+		{:else if selectedMapScore}
 			<div
 				class="w-12 h-12 rounded-xl border-2 border-secondary flex items-center justify-center font-black text-xl shrink-0 shadow-[2px_2px_0px_#1a0033]"
 				style="background-color: {gradeColors[selectedMapScore.grade]}; color: #0a0510"
@@ -81,8 +102,12 @@
 			{/if}
 		</Button>
 
-		<Button variant="primary" size="large" onclick={onStartGame} className="px-8 py-3">
-			<Play class="w-6 h-6 fill-current" /> JOUER (ENTRÉE)
+		<Button variant="primary" size="large" onclick={onStartGame} className="px-8 py-3 flex items-center gap-2">
+			<Play class="w-6 h-6 fill-current" />
+			<span>JOUER</span>
+			<kbd class="ml-1.5 px-2 py-0.5 text-xs bg-secondary text-primary border border-secondary rounded font-mono font-black uppercase shadow-sm">
+				ENTRÉE ↵
+			</kbd>
 		</Button>
 
 		{#if onDeselect}

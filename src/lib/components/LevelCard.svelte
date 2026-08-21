@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { RankGrade, MapScore } from '$lib/features/progression/progression';
 	import type { MapInfo } from '$lib/features/beatmap/types';
-	import { MoreVertical, Edit2, Trash2 } from '@lucide/svelte';
+	import { MoreVertical, Edit2, Trash2, Music } from '@lucide/svelte';
 
 	let {
 		map,
@@ -37,6 +37,21 @@
 
 	let isMenuOpen = $state(false);
 
+	const effectiveCoverBlob = $derived(map?.coverBlob ?? (map?.isVideo ? undefined : map?.bgBlob));
+	let coverUrl = $state<string | null>(null);
+
+	$effect(() => {
+		if (effectiveCoverBlob) {
+			const url = URL.createObjectURL(effectiveCoverBlob);
+			coverUrl = url;
+			return () => {
+				URL.revokeObjectURL(url);
+			};
+		} else {
+			coverUrl = null;
+		}
+	});
+
 	const gradeColors: Record<RankGrade, string> = {
 		SS: '#ffc145',
 		S: '#80D39B',
@@ -51,16 +66,16 @@
 		const norm = diff.trim().toUpperCase();
 
 		if (norm === 'EASY' || norm === 'FACILE') {
-			return { bg: '#80D39B', text: '#150029', border: '#0B0014' }; // Vert
+			return { bg: '#80D39B', text: '#150029', border: '#0B0014' };
 		}
 		if (norm === 'NORMAL' || norm === 'MOYEN') {
-			return { bg: '#5995ED', text: '#ffffff', border: '#0B0014' }; // Bleu
+			return { bg: '#5995ED', text: '#ffffff', border: '#0B0014' };
 		}
 		if (norm === 'HARD' || norm === 'DIFFICILE') {
-			return { bg: '#FF9F1C', text: '#150029', border: '#0B0014' }; // Ambre / Orange
+			return { bg: '#FF9F1C', text: '#150029', border: '#0B0014' };
 		}
 		if (norm === 'EXPERT' || norm === 'INSANE' || norm === 'MASTER') {
-			return { bg: '#F9564F', text: '#ffffff', border: '#0B0014' }; // Rose vif / Rouge
+			return { bg: '#F9564F', text: '#ffffff', border: '#0B0014' };
 		}
 
 		return { bg: '#FFD500', text: '#150029', border: '#0B0014' };
@@ -100,33 +115,47 @@
 			}
 		"
 	>
-		<div class="flex flex-col gap-0.5 min-w-0 flex-1">
-			<div class="flex flex-wrap items-center gap-2">
-				<h3 class="text-base font-black uppercase tracking-wider leading-tight truncate">
-					{title}
-				</h3>
-				{#if difficulty}
-					{@const diffStyle = getDifficultyStyle(difficulty)}
-					<span 
-						class="
-							px-2 py-0.5 text-[9px] font-black uppercase rounded border-2 border-secondary shrink-0
-							shadow-[2px_2px_0px_#0B0014] transition-all
-						"
-						style="background-color: {diffStyle.bg}; color: {diffStyle.text};"
-					>
-						{difficulty}
-					</span>
-				{/if}
-			</div>
+		<div class="flex items-center gap-3 min-w-0 flex-1">
+			{#if coverUrl}
+				<img
+					src={coverUrl}
+					alt={title}
+					class="w-12 h-12 md:w-14 md:h-14 aspect-square rounded-lg border-2 border-secondary object-cover shrink-0 shadow-[2px_2px_0px_#0B0014]"
+				/>
+			{:else}
+				<div class="w-12 h-12 md:w-14 md:h-14 aspect-square rounded-lg border-2 border-secondary bg-secondary/30 flex items-center justify-center text-primary shrink-0 shadow-[2px_2px_0px_#0B0014]">
+					<Music class="w-6 h-6" />
+				</div>
+			{/if}
 
-			<div class="text-[11px] font-bold uppercase tracking-wider flex flex-wrap items-center gap-x-2 gap-y-0.5 {isSelected ? 'text-secondary/80' : 'text-text-dim'}">
-				<span>{artist}</span>
-				{#if mapper}
-					<span>• Map par {mapper}</span>
-				{/if}
-				{#if bpm}
-					<span>• {bpm} BPM</span>
-				{/if}
+			<div class="flex flex-col gap-0.5 min-w-0 flex-1">
+				<div class="flex flex-wrap items-center gap-2">
+					<h3 class="text-base font-black uppercase tracking-wider leading-tight truncate">
+						{title}
+					</h3>
+					{#if difficulty}
+						{@const diffStyle = getDifficultyStyle(difficulty)}
+						<span 
+							class="
+								px-2 py-0.5 text-[9px] font-black uppercase rounded border-2 border-secondary shrink-0
+								shadow-[2px_2px_0px_#0B0014] transition-all
+							"
+							style="background-color: {diffStyle.bg}; color: {diffStyle.text};"
+						>
+							{difficulty}
+						</span>
+					{/if}
+				</div>
+
+				<div class="text-[11px] font-bold uppercase tracking-wider flex flex-wrap items-center gap-x-2 gap-y-0.5 {isSelected ? 'text-secondary/80' : 'text-text-dim'}">
+					<span>{artist}</span>
+					{#if mapper}
+						<span>• Map par {mapper}</span>
+					{/if}
+					{#if bpm}
+						<span>• {bpm} BPM</span>
+					{/if}
+				</div>
 			</div>
 		</div>
 

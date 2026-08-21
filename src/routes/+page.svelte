@@ -189,6 +189,10 @@
 			bpm: cm.bpm,
 			difficulty: cm.difficulty.toUpperCase(),
 			noteCount: cm.manifest.hitObjects.length,
+			audioBlob: cm.audioBlob,
+			bgBlob: cm.bgBlob,
+			coverBlob: cm.coverBlob,
+			isVideo: cm.isVideo,
 			createdAt: cm.createdAt
 		}));
 
