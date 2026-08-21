@@ -56,6 +56,27 @@ export const GAME = {
 	objectPoolSize: 50
 } as const;
 
+/**
+ * Couleurs pré-calculées en valeurs numériques pour PixiJS (évite parseInt à chaque frame).
+ */
+function hexToNum(hex: string): number {
+	return parseInt(hex.replace('#', ''), 16);
+}
+
+export const COLORS_HEX = {
+	bg: hexToNum(COLORS.bg),
+	surface: hexToNum(COLORS.surface),
+	primary: hexToNum(COLORS.primary),
+	secondary: hexToNum(COLORS.secondary),
+	accent: hexToNum(COLORS.accent),
+	text: hexToNum(COLORS.text),
+	textDim: hexToNum(COLORS.textDim),
+	perfect: hexToNum(COLORS.perfect),
+	great: hexToNum(COLORS.great),
+	good: hexToNum(COLORS.good),
+	miss: hexToNum(COLORS.miss)
+} as const;
+
 // CSS custom properties for Tailwind
 export const cssVariables = `
 	:root {
