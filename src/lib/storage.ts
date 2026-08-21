@@ -18,6 +18,9 @@ export interface CustomBeatmapItem {
 	difficulty: 'easy' | 'normal' | 'hard' | 'expert';
 	manifest: Manifest;
 	audioBlob?: Blob;
+	bgBlob?: Blob;
+	coverBlob?: Blob;
+	isVideo?: boolean;
 	createdAt: number;
 }
 

@@ -8,6 +8,8 @@ export interface UserSettings {
 	noteSpeed: number;
 	activeLayout: string;
 	backgroundParallax: boolean;
+	showLevelBackground: boolean;
+	backgroundDim: number;
 	username: string;
 	onboardingCompleted: boolean;
 	audioOffsetMs: number;
@@ -24,6 +26,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
 	noteSpeed: 400,
 	activeLayout: 'azerty',
 	backgroundParallax: true,
+	showLevelBackground: true,
+	backgroundDim: 50,
 	username: '',
 	onboardingCompleted: false,
 	audioOffsetMs: 0,

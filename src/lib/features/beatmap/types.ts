@@ -22,6 +22,10 @@ export interface MapInfo {
 	createdAt?: number;
 	/** Fichier audio optionnel sous forme de Blob */
 	blob?: Blob;
+	audioBlob?: Blob;
+	bgBlob?: Blob;
+	coverBlob?: Blob;
+	isVideo?: boolean;
 }
 
 /**
@@ -35,6 +39,7 @@ export interface ParsedOsuMap {
 	bpm: number;
 	audioFilename: string;
 	bgFilename?: string;
+	videoFilename?: string;
 	mode: number;
 	hitObjects: HitObject[];
 	filename?: string;
@@ -50,7 +55,7 @@ export interface OszDifficultyItem {
 }
 
 /**
- * Package .osz analysé contenant l'audio, l'image de fond et les difficultés
+ * Package .osz analysé contenant l'audio, l'image/vidéo de fond et les difficultés
  */
 export interface ParsedOszPackage {
 	title: string;
@@ -59,6 +64,8 @@ export interface ParsedOszPackage {
 	audioFilename: string;
 	audioBlob?: Blob;
 	bgBlob?: Blob;
+	coverBlob?: Blob;
+	isVideo?: boolean;
 	difficulties: OszDifficultyItem[];
 }
 
