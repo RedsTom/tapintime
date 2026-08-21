@@ -77,6 +77,27 @@
 		showKeySelector = true;
 	});
 
+	// Throttle HUD via requestAnimationFrame — batch les updates pour éviter les re-renders Svelte excessifs
+	let hudUpdatePending = false;
+	let pendingCombo = 0;
+	let pendingScore = 0;
+	let pendingAccuracy = 100;
+
+	function scheduleHudUpdate(state: import('$lib/features/game/GameState').GameState) {
+		pendingCombo = state.combo;
+		pendingScore = state.score;
+		pendingAccuracy = state.getAccuracy();
+		if (!hudUpdatePending) {
+			hudUpdatePending = true;
+			requestAnimationFrame(() => {
+				combo = pendingCombo;
+				score = pendingScore;
+				accuracy = pendingAccuracy;
+				hudUpdatePending = false;
+			});
+		}
+	}
+
 	async function initEngineAndStart() {
 		await ensureAudioContextRunning();
 		if (canvasEl && !engine) {
@@ -92,9 +113,7 @@
 				settings?.noteSpeed ?? 400,
 				{
 					onStateUpdate: (state) => {
-						combo = state.combo;
-						score = state.score;
-						accuracy = state.getAccuracy();
+						scheduleHudUpdate(state);
 					},
 					onHit: (rating, char, finger, deltaMs, comboBeforeMiss) => {
 						lastRating = rating;
