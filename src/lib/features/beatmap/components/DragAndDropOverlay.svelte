@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Upload } from '@lucide/svelte';
+	import { _ } from '$lib/i18n';
 
 	let { isDragging }: { isDragging: boolean } = $props();
 </script>
@@ -12,9 +13,9 @@
 			<div class="w-20 h-20 bg-primary/20 border-4 border-primary rounded-full flex items-center justify-center">
 				<Upload class="w-10 h-10 text-primary" />
 			</div>
-			<h3 class="text-2xl font-black uppercase text-primary">Déposer pour importer</h3>
+			<h3 class="text-2xl font-black uppercase text-primary">{$_('drag_drop.title')}</h3>
 			<p class="text-xs font-bold uppercase text-text-dim">
-				Fichiers acceptés : <span class="text-text">.osz (pack osu!), .titm, .osu</span>
+				{$_('drag_drop.accepted_files')}
 			</p>
 		</div>
 	</div>

@@ -5,6 +5,7 @@
 	import type { MapInfo } from '$lib/features/beatmap/types';
 	import { Music, Layout as LayoutIcon, Plus, Wrench, Sparkles, ArrowRight, Edit2, Trash2 } from '@lucide/svelte';
 	import { deleteCustomBeatmap } from '$lib/storage';
+	import { _ } from '$lib/i18n';
 
 	let maps = $state<MapInfo[]>([]);
 
@@ -43,13 +44,13 @@
 	<!-- En-tête de la page Studio -->
 	<div class="flex flex-col gap-2 border-b-4 border-secondary pb-6">
 		<span class="text-xs font-black uppercase tracking-widest text-accent flex items-center gap-1.5">
-			<Sparkles class="w-4 h-4" /> STUDIO DE CRÉATION
+			<Sparkles class="w-4 h-4" /> {$_('creator.studio_title')}
 		</span>
 		<h1 class="text-3xl md:text-4xl font-black uppercase text-primary tracking-wider">
-			Éditeurs TapInTime
+			{$_('creator.editors_header')}
 		</h1>
 		<p class="text-sm font-bold text-text-dim uppercase">
-			Gérez et éditez vos cartes de jeu ou personnalisez la disposition de votre clavier.
+			{$_('creator.editors_desc')}
 		</p>
 	</div>
 
@@ -61,27 +62,27 @@
 					<Music class="w-7 h-7" />
 				</div>
 				<div>
-					<h2 class="text-2xl font-black uppercase text-primary">Éditeur de Beatmaps</h2>
+					<h2 class="text-2xl font-black uppercase text-primary">{$_('creator.beatmap_editor_title')}</h2>
 					<p class="text-xs font-bold text-text-dim uppercase mt-0.5">
-						Créez de nouvelles cartes ou modifiez vos cartes existantes
+						{$_('creator.beatmap_editor_desc')}
 					</p>
 				</div>
 			</div>
 
 			<Button variant="primary" size="large" onclick={() => (window.location.href = '/creator/beatmap')}>
-				<Plus class="w-5 h-5" /> CRÉER UN NOUVEAU NIVEAU
+				<Plus class="w-5 h-5" /> {$_('creator.create_new_level')}
 			</Button>
 		</div>
 
 		<!-- Liste des niveaux pour édition -->
 		<div class="flex flex-col gap-3">
 			<h3 class="text-xs font-black uppercase tracking-wider text-text-dim">
-				Vos cartes créées ({maps.length}) :
+				{$_('creator.created_maps', { values: { count: maps.length } })}
 			</h3>
 
 			{#if maps.length === 0}
 				<div class="p-6 text-center rounded-xl border-2 border-dashed border-secondary/50 bg-secondary/15 text-text-dim font-black uppercase text-xs tracking-wider">
-					Aucune carte créée pour le moment. Cliquez sur "Créer un nouveau niveau" pour commencer !
+					{$_('creator.no_maps_created')}
 				</div>
 			{:else}
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">
@@ -103,7 +104,7 @@
 									</span>
 								</div>
 								<span class="text-xs font-bold text-text-dim uppercase truncate mt-1">
-									{map.artist} • <span class="text-text">{map.noteCount} notes</span> • {map.bpm} BPM
+									{map.artist} • <span class="text-text">{$_('player_bar.note_count', { values: { count: map.noteCount } })}</span> • {map.bpm} BPM
 								</span>
 							</div>
 
@@ -116,7 +117,7 @@
 									class="p-2 border-2 border-secondary bg-primary text-secondary rounded-lg font-black text-xs uppercase flex items-center gap-1 hover:scale-105 transition-transform"
 									title="Éditer cette map"
 								>
-									<Edit2 class="w-4 h-4" /> Éditer
+									<Edit2 class="w-4 h-4" /> {$_('creator.edit_btn')}
 								</button>
 
 								<button
@@ -141,15 +142,15 @@
 				<LayoutIcon class="w-7 h-7" />
 			</div>
 			<div>
-				<h2 class="text-2xl font-black uppercase text-accent">Éditeur de Layouts Clavier</h2>
+				<h2 class="text-2xl font-black uppercase text-accent">{$_('creator.layout_editor_title')}</h2>
 				<p class="text-xs font-bold text-text-dim uppercase mt-0.5">
-					Modifiez la disposition des touches et réattribuez les couleurs de vos doigts.
+					{$_('creator.layout_editor_desc')}
 				</p>
 			</div>
 		</div>
 
 		<Button variant="accent" size="large" onclick={() => (window.location.href = '/creator/layout')}>
-			<Wrench class="w-5 h-5" /> OUVRIR L'ÉDITEUR DE LAYOUTS
+			<Wrench class="w-5 h-5" /> {$_('creator.open_layout_editor')}
 		</Button>
 	</div>
 </div>

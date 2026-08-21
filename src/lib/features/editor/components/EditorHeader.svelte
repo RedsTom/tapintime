@@ -2,6 +2,7 @@
 	import Button from '$lib/components/Button.svelte';
 	import { Music, ArrowLeft, Save, Download, Upload } from '@lucide/svelte';
 	import type { BeatmapEditorState } from '../beatmapEditorState.svelte';
+	import { _ } from '$lib/i18n';
 
 	let { editor }: { editor: BeatmapEditorState } = $props();
 
@@ -23,17 +24,17 @@
 			<ArrowLeft class="w-5 h-5" />
 		</a>
 		<div>
-			<h1 class="text-xl font-black uppercase text-primary tracking-wider leading-none">Éditeur de Beatmaps</h1>
-			<p class="text-xs font-bold text-text-dim uppercase mt-1">Créez ou modifiez vos cartes rythmiques</p>
+			<h1 class="text-xl font-black uppercase text-primary tracking-wider leading-none">{$_('beatmap_editor.title')}</h1>
+			<p class="text-xs font-bold text-text-dim uppercase mt-1">{$_('beatmap_editor.subtitle')}</p>
 		</div>
 	</div>
 
 	<div class="flex items-center gap-3">
 		<Button variant="primary" size="md" onclick={() => editor.saveBeatmap()}>
-			<Save class="w-4 h-4" /> SAUVEGARDER
+			<Save class="w-4 h-4" /> {$_('beatmap_editor.save')}
 		</Button>
 		<Button variant="secondary" size="md" onclick={() => editor.exportTitmPackage()}>
-			<Download class="w-4 h-4" /> EXPORTER .TITM
+			<Download class="w-4 h-4" /> {$_('beatmap_editor.export')}
 		</Button>
 	</div>
 </header>

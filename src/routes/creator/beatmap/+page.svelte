@@ -15,6 +15,7 @@
 	import { parseOsuFile, parseOszFile, mapOsuDifficultyToTitm } from '$lib/features/beatmap/parsers/osuParser';
 	import type { OszDifficultyItem } from '$lib/features/beatmap/types';
 	import { Upload, ChevronRight, Check, HelpCircle, FileMusic, Sliders } from '@lucide/svelte';
+	import { _ } from '$lib/i18n';
 
 	const editor = new BeatmapEditorState();
 
@@ -225,24 +226,24 @@
 			<div class="bg-surface border-4 border-secondary p-4 rounded-xl shadow-[5px_5px_0px_#1a0033] flex flex-col gap-3">
 				<h3 class="text-xs font-black uppercase tracking-wider text-primary border-b-2 border-secondary pb-1 flex items-center gap-1.5">
 					<Sliders class="w-3.5 h-3.5" />
-					Métadonnées
+					{$_('beatmap_editor.metadata')}
 				</h3>
-				<Input label="Titre du morceau" bind:value={editor.title} />
-				<Input label="Artiste" bind:value={editor.artist} />
+				<Input label={$_('beatmap_editor.song_title')} bind:value={editor.title} />
+				<Input label={$_('beatmap_editor.artist')} bind:value={editor.artist} />
 				<div class="grid grid-cols-2 gap-2">
-					<Input label="BPM" type="number" bind:value={editor.bpm} />
-					<Input label="Offset (ms)" type="number" bind:value={editor.audioOffset} />
+					<Input label={$_('beatmap_editor.bpm')} type="number" bind:value={editor.bpm} />
+					<Input label={$_('beatmap_editor.audio_offset')} type="number" bind:value={editor.audioOffset} />
 				</div>
 				<div class="flex flex-col gap-1">
-					<label for="difficulty-select" class="text-[10px] font-black uppercase tracking-wider text-text-dim">Difficulté</label>
+					<label for="difficulty-select" class="text-[10px] font-black uppercase tracking-wider text-text-dim">{$_('beatmap_editor.difficulty')}</label>
 					<select
 						id="difficulty-select"
 						bind:value={editor.difficulty}
 						class="w-full bg-surface border-4 border-secondary rounded-lg px-2.5 py-1.5 text-text font-black text-xs uppercase tracking-wider focus:outline-none focus:border-primary shadow-[2px_2px_0px_#1a0033]"
 					>
-						<option value="easy">Facile (Easy)</option>
-						<option value="normal">Normal</option>
-						<option value="hard">Difficile (Hard)</option>
+						<option value="easy">{$_('settings.controls_section.leniency_easy')} (Easy)</option>
+						<option value="normal">{$_('settings.controls_section.leniency_normal')}</option>
+						<option value="hard">{$_('home.sort_difficulty')} (Hard)</option>
 						<option value="expert">Expert</option>
 					</select>
 				</div>
@@ -252,37 +253,37 @@
 			<div class="bg-surface border-4 border-secondary p-4 rounded-xl shadow-[5px_5px_0px_#ff3366] flex flex-col gap-2.5">
 				<h3 class="text-xs font-black uppercase tracking-wider text-accent border-b-2 border-secondary pb-1 flex items-center gap-1.5">
 					<FileMusic class="w-3.5 h-3.5" />
-					Fichiers Audio & Médias
+					{$_('beatmap_editor.audio_media_files')}
 				</h3>
 
 				<div class="flex flex-col gap-1">
-					<span class="text-[10px] font-black uppercase tracking-wider text-text-dim">Piste Audio (.mp3 / .ogg)</span>
+					<span class="text-[10px] font-black uppercase tracking-wider text-text-dim">{$_('beatmap_editor.audio_track')}</span>
 					<label class="border-2 border-secondary bg-secondary/20 hover:bg-secondary/40 p-2 rounded-lg flex items-center justify-center gap-2 text-xs font-black uppercase cursor-pointer transition-all">
-						<Upload class="w-3.5 h-3.5" /> {editor.audioFileName ? editor.audioFileName : 'Choisir un fichier audio'}
+						<Upload class="w-3.5 h-3.5" /> {editor.audioFileName ? editor.audioFileName : $_('beatmap_editor.audio_track')}
 						<input type="file" accept="audio/*" onchange={handleAudioUpload} class="sr-only" />
 					</label>
 				</div>
 
 				<div class="flex flex-col gap-1">
-					<span class="text-[10px] font-black uppercase tracking-wider text-text-dim">Fond Niveau (Image / Vidéo)</span>
+					<span class="text-[10px] font-black uppercase tracking-wider text-text-dim">{$_('beatmap_editor.bg_media')}</span>
 					<label class="border-2 border-secondary bg-secondary/20 hover:bg-secondary/40 p-2 rounded-lg flex items-center justify-center gap-2 text-xs font-black uppercase cursor-pointer transition-all">
-						<Upload class="w-3.5 h-3.5" /> {editor.bgFileName ? editor.bgFileName : 'Choisir image ou vidéo'}
+						<Upload class="w-3.5 h-3.5" /> {editor.bgFileName ? editor.bgFileName : $_('beatmap_editor.bg_image')}
 						<input type="file" accept="image/*,video/*" onchange={handleBgMediaUpload} class="sr-only" />
 					</label>
 				</div>
 
 				<div class="flex flex-col gap-1">
-					<span class="text-[10px] font-black uppercase tracking-wider text-text-dim">Miniature Son (Carrée)</span>
+					<span class="text-[10px] font-black uppercase tracking-wider text-text-dim">{$_('beatmap_editor.cover_thumb')}</span>
 					<label class="border-2 border-secondary bg-secondary/20 hover:bg-secondary/40 p-2 rounded-lg flex items-center justify-center gap-2 text-xs font-black uppercase cursor-pointer transition-all">
-						<Upload class="w-3.5 h-3.5" /> {editor.coverFileName ? editor.coverFileName : 'Choisir miniature'}
+						<Upload class="w-3.5 h-3.5" /> {editor.coverFileName ? editor.coverFileName : $_('beatmap_editor.cover_square')}
 						<input type="file" accept="image/*" onchange={handleCoverUpload} class="sr-only" />
 					</label>
 				</div>
 
 				<div class="flex flex-col gap-1 pt-1.5 border-t border-secondary/20">
-					<span class="text-[10px] font-black uppercase tracking-wider text-text-dim">Importer .osz / .osu</span>
+					<span class="text-[10px] font-black uppercase tracking-wider text-text-dim">{$_('beatmap_editor.import_osu_osz')}</span>
 					<label class="border-2 border-secondary bg-primary/20 hover:bg-primary/30 p-2 rounded-lg flex items-center justify-center gap-2 text-xs font-black uppercase text-primary cursor-pointer transition-all">
-						<Upload class="w-3.5 h-3.5" /> Importer carte osu!
+						<Upload class="w-3.5 h-3.5" /> {$_('beatmap_editor.import_osu_card')}
 						<input type="file" accept=".osz,.osu" onchange={handleOsuOrOszImport} class="sr-only" />
 					</label>
 				</div>
@@ -292,12 +293,12 @@
 			<div class="bg-surface border-4 border-secondary p-4 rounded-xl shadow-[5px_5px_0px_#1a0033] flex flex-col gap-2">
 				<h3 class="text-xs font-black uppercase text-text-dim tracking-wider border-b-2 border-secondary pb-1 flex items-center gap-1.5">
 					<HelpCircle class="w-3.5 h-3.5" />
-					Raccourcis
+					{$_('beatmap_editor.shortcuts')}
 				</h3>
 				<div class="flex flex-col gap-1 text-[11px] font-bold text-text uppercase">
 					<div class="flex justify-between border-b border-secondary/15 pb-0.5">
-						<span class="text-text-dim">Espace</span>
-						<span class="text-primary font-black">Play / Pause</span>
+						<span class="text-text-dim">{$_('beatmap_editor.space')}</span>
+						<span class="text-primary font-black">{$_('beatmap_editor.play_pause')}</span>
 					</div>
 					<div class="flex justify-between border-b border-secondary/15 pb-0.5">
 						<span class="text-text-dim">A - Z</span>
@@ -313,11 +314,11 @@
 					</div>
 					<div class="flex justify-between border-b border-secondary/15 pb-0.5">
 						<span class="text-text-dim">Suppr</span>
-						<span class="text-accent font-black">Supprimer</span>
+						<span class="text-accent font-black">{$_('common.delete')}</span>
 					</div>
 					<div class="flex justify-between">
 						<span class="text-text-dim">F5</span>
-						<span class="text-primary font-black">Tester Map</span>
+						<span class="text-primary font-black">{$_('beatmap_editor.test_map')}</span>
 					</div>
 				</div>
 			</div>

@@ -3,6 +3,7 @@
 	import { Play, Pause, Music, X } from '@lucide/svelte';
 	import type { MapInfo } from '../types';
 	import type { MapScore, RankGrade } from '../../progression/progression';
+	import { _ } from '$lib/i18n';
 
 	let {
 		selectedMap,
@@ -77,7 +78,7 @@
 				</span>
 			</div>
 			<div class="text-xs font-bold text-text-dim uppercase truncate mt-1">
-				{selectedMap.artist} • <span class="text-text">{selectedMap.noteCount} Notes</span> • {selectedMap.bpm} BPM
+				{selectedMap.artist} • <span class="text-text">{$_('player_bar.note_count', { values: { count: selectedMap.noteCount } })}</span> • {selectedMap.bpm} BPM
 			</div>
 		</div>
 	</div>
@@ -86,7 +87,7 @@
 	<div class="flex items-center justify-center gap-4 flex-1 shrink-0">
 		{#if selectedMapScore}
 			<div class="flex flex-col text-center">
-				<span class="text-[10px] font-black uppercase text-text-dim">Record</span>
+				<span class="text-[10px] font-black uppercase text-text-dim">{$_('player_bar.record')}</span>
 				<span class="text-sm font-black text-primary font-mono">{selectedMapScore.score.toLocaleString()} PTS</span>
 			</div>
 		{/if}
@@ -96,17 +97,17 @@
 	<div class="flex items-center justify-end gap-3 shrink-0">
 		<Button variant="secondary" size="md" onclick={onToggleAudio} title="Écouter la prévisualisation audio">
 			{#if isMenuAudioPaused}
-				<Play class="w-4 h-4" /> <span class="hidden sm:inline">ÉCOUTER</span>
+				<Play class="w-4 h-4" /> <span class="hidden sm:inline">{$_('player_bar.listen')}</span>
 			{:else}
-				<Pause class="w-4 h-4" /> <span class="hidden sm:inline">PAUSE</span>
+				<Pause class="w-4 h-4" /> <span class="hidden sm:inline">{$_('player_bar.pause')}</span>
 			{/if}
 		</Button>
 
 		<Button variant="primary" size="large" onclick={onStartGame} className="px-8 py-3 flex items-center gap-2">
 			<Play class="w-6 h-6 fill-current" />
-			<span>JOUER</span>
+			<span>{$_('player_bar.play')}</span>
 			<kbd class="ml-1.5 px-2 py-0.5 text-xs bg-secondary text-primary border border-secondary rounded font-mono font-black uppercase shadow-sm">
-				ENTRÉE ↵
+				{$_('player_bar.enter_key')}
 			</kbd>
 		</Button>
 

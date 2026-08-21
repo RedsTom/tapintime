@@ -2,7 +2,8 @@
 	import Input from '$lib/components/Input.svelte';
 	import { Trash2, ShieldAlert } from '@lucide/svelte';
 	import type { Key, Finger, Layer } from '../schemas/titl';
-	import { FINGER_COLORS, FINGER_LABELS } from '../fingerColors';
+	import { FINGER_COLORS } from '../fingerColors';
+	import { _ } from '$lib/i18n';
 
 	let {
 		key = $bindable(),
@@ -16,19 +17,19 @@
 		onRemoveKey: (index: number) => void;
 	} = $props();
 
-	const FINGERS: { id: Finger; label: string; color: string }[] = (
-		Object.keys(FINGER_COLORS) as Finger[]
-	).map((f) => ({
-		id: f,
-		label: FINGER_LABELS[f],
-		color: FINGER_COLORS[f]
-	}));
+	const FINGERS = $derived(
+		(Object.keys(FINGER_COLORS) as Finger[]).map((f) => ({
+			id: f,
+			label: $_(`finger_labels.${f}`),
+			color: FINGER_COLORS[f]
+		}))
+	);
 </script>
 
 <div class="bg-surface border-4 border-secondary p-5 rounded-xl shadow-[5px_5px_0px_#ff3366] flex flex-col gap-4 text-left">
 	<div class="flex items-center justify-between border-b-2 border-secondary pb-1.5">
 		<h3 class="text-sm font-black uppercase tracking-wider text-accent">
-			Édition Touche #{index + 1}
+			{$_('layout_editor.edit_key_title', { values: { number: index + 1 } })}
 		</h3>
 		<button
 			onclick={() => onRemoveKey(index)}
@@ -40,17 +41,17 @@
 	</div>
 
 	<div class="grid grid-cols-2 gap-3">
-		<Input label="Caractère (char)" bind:value={key.char} placeholder="a" />
-		<Input label="KeyCode (ex: KeyA)" bind:value={key.keyCode} placeholder="KeyA" />
+		<Input label={$_('layout_editor.char_label')} bind:value={key.char} placeholder="a" />
+		<Input label={$_('layout_editor.keycode_label')} bind:value={key.keyCode} placeholder="KeyA" />
 	</div>
 
 	<div class="grid grid-cols-2 gap-3">
-		<Input label="Position X (0..10)" type="number" bind:value={key.x} />
-		<Input label="Ligne Y (0..3)" type="number" bind:value={key.y} />
+		<Input label={$_('layout_editor.pos_x_label')} type="number" bind:value={key.x} />
+		<Input label={$_('layout_editor.pos_y_label')} type="number" bind:value={key.y} />
 	</div>
 
 	<div class="flex flex-col gap-1.5">
-		<label for="finger-select" class="text-xs font-black uppercase tracking-wider text-text-dim">Doigt Assigné</label>
+		<label for="finger-select" class="text-xs font-black uppercase tracking-wider text-text-dim">{$_('layout_editor.assigned_finger')}</label>
 		<select
 			id="finger-select"
 			bind:value={key.finger}
@@ -70,14 +71,14 @@
 				bind:checked={key.isModifier}
 				class="accent-primary w-4 h-4 cursor-pointer"
 			/>
-			<span>Touche Modifier / Accès Couche</span>
+			<span>{$_('layout_editor.is_modifier_checkbox')}</span>
 		</label>
 
 		{#if key.isModifier}
 			<div class="flex flex-col gap-3 pt-1 border-t border-secondary/20">
 				<div class="grid grid-cols-2 gap-2">
 					<div class="flex flex-col gap-1">
-						<label for="mod-type-select" class="text-[10px] font-black uppercase text-text-dim">Type Modifier</label>
+						<label for="mod-type-select" class="text-[10px] font-black uppercase text-text-dim">{$_('layout_editor.mod_type')}</label>
 						<select
 							id="mod-type-select"
 							bind:value={key.modifierType}
@@ -92,7 +93,7 @@
 					</div>
 
 					<div class="flex flex-col gap-1">
-						<label for="mod-action-select" class="text-[10px] font-black uppercase text-text-dim">Action</label>
+						<label for="mod-action-select" class="text-[10px] font-black uppercase text-text-dim">{$_('layout_editor.mod_action')}</label>
 						<select
 							id="mod-action-select"
 							bind:value={key.modifierAction}
@@ -106,13 +107,13 @@
 				</div>
 
 				<div class="flex flex-col gap-1">
-					<label for="target-layer-select" class="text-[10px] font-black uppercase text-text-dim">Couche Cible Activée</label>
+					<label for="target-layer-select" class="text-[10px] font-black uppercase text-text-dim">{$_('layout_editor.target_layer')}</label>
 					<select
 						id="target-layer-select"
 						bind:value={key.targetLayer}
 						class="w-full bg-surface border-2 border-secondary rounded p-1.5 font-mono font-black text-xs uppercase text-text focus:outline-none"
 					>
-						<option value="">Aucune</option>
+						<option value="">{$_('layout_editor.target_layer_none')}</option>
 						{#each layers as layer}
 							<option value={layer.name}>{layer.name}</option>
 						{/each}

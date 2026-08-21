@@ -4,6 +4,7 @@
 	import type { BeatmapEditorState } from '../beatmapEditorState.svelte';
 	import { COLORS, GAME } from '$lib/tokens';
 	import { getFingerColorForKey, isColorDark } from '$lib/fingerColors';
+	import { _ } from '$lib/i18n';
 
 	let { editor }: { editor: BeatmapEditorState } = $props();
 
@@ -254,10 +255,10 @@
 	<div class="flex items-center justify-between">
 		<h3 class="text-xs font-black uppercase text-accent tracking-wider flex items-center gap-2">
 			<span class="w-2.5 h-2.5 rounded-full bg-accent animate-ping"></span>
-			Aperçu Piste en Direct (Gameplay Canvas)
+			{$_('beatmap_editor.track_preview')}
 		</h3>
 		<span class="text-[10px] font-mono font-black text-text-dim uppercase">
-			Vitesse: {GAME.noteSpeed} px/s
+			{$_('beatmap_editor.speed_px', { values: { speed: GAME.noteSpeed } })}
 		</span>
 	</div>
 	<div bind:this={containerEl} style="height: {140 + (totalLanes - 1) * 35}px" class="w-full relative overflow-hidden rounded-lg"></div>

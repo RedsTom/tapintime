@@ -5,6 +5,7 @@
 	import { loadLayoutByNameOrId } from '$lib/storage';
 	import VirtualKeyboard from '$lib/components/VirtualKeyboard.svelte';
 	import { Keyboard } from '@lucide/svelte';
+	import { _ } from '$lib/i18n';
 
 	let { editor }: { editor: BeatmapEditorState } = $props();
 
@@ -72,11 +73,11 @@
 		<div class="flex items-center gap-2">
 			<Keyboard class="w-4 h-4 text-primary" />
 			<h3 class="text-xs font-black uppercase text-primary tracking-wider">
-				Aperçu Clavier Dynamique en Direct
+				{$_('beatmap_editor.live_keyboard_preview')}
 			</h3>
 		</div>
 		<span class="text-[10px] font-mono font-black text-accent uppercase">
-			Layout: {editor.selectedLayoutName.toUpperCase()} · Palier: {editor.selectedTierLevel}/15
+			{$_('beatmap_editor.layout_tier_info', { values: { layout: editor.selectedLayoutName.toUpperCase(), tier: editor.selectedTierLevel } })}
 		</span>
 	</div>
 
@@ -93,7 +94,7 @@
 		</div>
 	{:else}
 		<div class="p-6 text-center text-xs font-mono font-black text-text-dim uppercase">
-			Chargement de la disposition clavier...
+			{$_('common.loading')}
 		</div>
 	{/if}
 </div>

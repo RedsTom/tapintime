@@ -8,6 +8,7 @@
 	import Button from '$lib/components/Button.svelte';
 	import Input from '$lib/components/Input.svelte';
 	import { Keyboard, Save, Download, Plus, ArrowLeft, Check, Sparkles } from '@lucide/svelte';
+	import { _ } from '$lib/i18n';
 
 	let layoutName = $state('Mon Layout');
 	let layoutDesc = $state('Layout personnalisé avec couches créé sur TapInTime');
@@ -195,19 +196,19 @@
 				href="/"
 				class="flex items-center gap-1.5 border-4 border-secondary bg-surface px-3 py-1.5 rounded-lg font-black text-xs uppercase hover:bg-secondary/20 transition-all shadow-[2px_2px_0px_#1a0033]"
 			>
-				<ArrowLeft class="w-4 h-4" /> Accueil
+				<ArrowLeft class="w-4 h-4" /> {$_('layout_editor.home_btn')}
 			</a>
 			<h1 class="text-2xl md:text-3xl font-black uppercase tracking-wider text-primary flex items-center gap-2">
-				<Keyboard class="w-7 h-7" /> Éditeur de Layout Multi-Couches
+				<Keyboard class="w-7 h-7" /> {$_('layout_editor.title')}
 			</h1>
 		</div>
 
 		<div class="flex items-center gap-3">
 			<Button variant="secondary" size="small" onclick={exportLayout}>
-				<Download class="w-4 h-4" /> Export .titl
+				<Download class="w-4 h-4" /> {$_('layout_editor.export_titl')}
 			</Button>
 			<Button variant="primary" size="small" onclick={saveLayout}>
-				<Save class="w-4 h-4" /> Sauvegarder
+				<Save class="w-4 h-4" /> {$_('layout_editor.save')}
 			</Button>
 		</div>
 	</div>
@@ -238,13 +239,13 @@
 			<!-- Métadonnées & Modèles -->
 			<div class="bg-surface border-4 border-secondary p-5 rounded-xl shadow-[5px_5px_0px_#1a0033] flex flex-col gap-4">
 				<h3 class="text-sm font-black uppercase tracking-wider text-primary border-b-2 border-secondary pb-1.5">
-					Informations du Layout
+					{$_('layout_editor.layout_info_title')}
 				</h3>
-				<Input label="Nom du Layout" bind:value={layoutName} />
-				<Input label="Description" bind:value={layoutDesc} />
+				<Input label={$_('layout_editor.layout_name')} bind:value={layoutName} />
+				<Input label={$_('layout_editor.description')} bind:value={layoutDesc} />
 
 				<div class="flex flex-col gap-1.5 pt-2 border-t-2 border-secondary/20">
-					<span class="text-xs font-black uppercase tracking-wider text-text-dim">Charger un modèle</span>
+					<span class="text-xs font-black uppercase tracking-wider text-text-dim">{$_('layout_editor.load_preset')}</span>
 					<div class="grid grid-cols-3 gap-2">
 						<button
 							onclick={() => loadPreset('azerty')}
@@ -278,7 +279,7 @@
 				/>
 			{:else}
 				<div class="bg-surface/50 border-4 border-dashed border-secondary/40 p-6 rounded-xl text-center text-xs font-black text-text-dim uppercase tracking-wider">
-					Cliquez sur une touche de la couche "{layers[activeLayerIndex]?.name}" pour la modifier.
+					{$_('layout_editor.edit_key_prompt', { values: { layer: layers[activeLayerIndex]?.name } })}
 				</div>
 			{/if}
 		</div>
@@ -289,9 +290,9 @@
 			<div class="bg-surface border-4 border-secondary p-6 rounded-xl shadow-[6px_6px_0px_#1a0033] flex flex-col gap-4 text-center">
 				<div class="flex items-center justify-between border-b-2 border-secondary pb-2">
 					<h2 class="text-sm font-black uppercase tracking-wider text-primary flex items-center gap-2">
-						<Sparkles class="w-4 h-4 text-primary" /> Couche Active: {layers[activeLayerIndex]?.name}
+						<Sparkles class="w-4 h-4 text-primary" /> {$_('layout_editor.active_layer_title', { values: { layer: layers[activeLayerIndex]?.name } })}
 					</h2>
-					<span class="text-[10px] font-black text-text-dim uppercase">Tapez au clavier pour tester</span>
+					<span class="text-[10px] font-black text-text-dim uppercase">{$_('layout_editor.test_typing_prompt')}</span>
 				</div>
 
 				<div class="w-full overflow-x-auto py-2">
@@ -303,10 +304,10 @@
 			<div class="bg-surface border-4 border-secondary p-6 rounded-xl shadow-[6px_6px_0px_#1a0033] flex flex-col gap-4">
 				<div class="flex items-center justify-between border-b-2 border-secondary pb-2">
 					<h3 class="text-sm font-black uppercase tracking-wider text-text">
-						Touches de la couche "{layers[activeLayerIndex]?.name}" ({activeKeys.length})
+						{$_('layout_editor.layer_keys_title', { values: { layer: layers[activeLayerIndex]?.name, count: activeKeys.length } })}
 					</h3>
 					<Button variant="accent" size="small" onclick={addKey}>
-						<Plus class="w-4 h-4" /> Ajouter Touche
+						<Plus class="w-4 h-4" /> {$_('layout_editor.add_key')}
 					</Button>
 				</div>
 

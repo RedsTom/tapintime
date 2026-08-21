@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { BeatmapEditorState } from '../beatmapEditorState.svelte';
 	import { getFingerColorForKey, isColorDark } from '$lib/fingerColors';
+	import { _ } from '$lib/i18n';
 	import { ZoomIn, ZoomOut } from '@lucide/svelte';
 
 	let { editor }: { editor: BeatmapEditorState } = $props();
@@ -109,7 +110,7 @@
 	<!-- En-tête de la timeline avec boutons de zoom -->
 	<div class="flex flex-wrap items-center justify-between gap-3 border-b-2 border-secondary pb-2">
 		<div class="flex items-center gap-3">
-			<h3 class="text-sm font-black uppercase text-primary tracking-wider">Timeline Zoomable</h3>
+			<h3 class="text-sm font-black uppercase text-primary tracking-wider">{$_('beatmap_editor.zoomable_timeline')}</h3>
 			<span class="text-xs font-mono font-black text-accent bg-secondary/30 px-2 py-0.5 border border-secondary rounded">
 				{formatTime(editor.currentTime)} / {formatTime(editor.duration || 0)}
 			</span>
@@ -147,6 +148,14 @@
 		bind:this={timelineContainer}
 		onwheel={handleWheel}
 		onclick={handleTimelineClick}
+		onkeydown={(e) => {
+			if (e.key === 'Enter' || e.key === ' ') {
+				handleTimelineClick(e as any);
+			}
+		}}
+		role="button"
+		tabindex="0"
+		aria-label="Timeline"
 		class="w-full h-24 bg-bg border-4 border-secondary rounded-lg relative overflow-hidden cursor-pointer select-none"
 	>
 		<!-- Graduations de la Grille (Beat Snap Ticks) -->
@@ -201,7 +210,7 @@
 
 	<!-- Légende des informations de vue -->
 	<div class="flex items-center justify-between text-[10px] font-mono font-black text-text-dim uppercase">
-		<span>Fenêtre visible: {visibleWindowSec.toFixed(1)}s (Notes en vue: {visibleNotes.length})</span>
+		<span>{$_('beatmap_editor.visible_window', { values: { time: visibleWindowSec.toFixed(1), count: visibleNotes.length } })}</span>
 		<span>BPM: {editor.bpm} | Snap: {editor.beatSnap} ({editor.getSnapIntervalMs().toFixed(1)}ms)</span>
 	</div>
 </div>
