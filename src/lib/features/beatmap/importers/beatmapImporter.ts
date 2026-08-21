@@ -72,6 +72,9 @@ export class BeatmapImporter {
 			difficulty: manifest.difficulty,
 			manifest,
 			audioBlob: pkg.audioBlob,
+			bgBlob: pkg.bgBlob,
+			coverBlob: pkg.coverBlob,
+			isVideo: pkg.isVideo,
 			createdAt: Date.now()
 		});
 
@@ -126,6 +129,24 @@ export class BeatmapImporter {
 		let audioBlob: Blob | undefined;
 		if (audioFile) audioBlob = await audioFile.async('blob');
 
+		let bgBlob: Blob | undefined;
+		let coverBlob: Blob | undefined;
+		let isVideo = false;
+
+		const videoFile = zip.file(/\.(mp4|webm|avi|mkv)$/i)[0];
+		const imageFile = zip.file(/\.(jpg|jpeg|png|webp)$/i)[0];
+
+		if (imageFile) {
+			const img = await imageFile.async('blob');
+			coverBlob = img;
+			if (!videoFile) bgBlob = img;
+		}
+
+		if (videoFile) {
+			bgBlob = await videoFile.async('blob');
+			isVideo = true;
+		}
+
 		const mapId = `custom_${file.name.replace('.titm', '').toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
 
 		await saveCustomBeatmap({
@@ -136,6 +157,9 @@ export class BeatmapImporter {
 			difficulty: manifest.difficulty,
 			manifest,
 			audioBlob,
+			bgBlob,
+			coverBlob,
+			isVideo,
 			createdAt: Date.now()
 		});
 

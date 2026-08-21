@@ -11,6 +11,10 @@ function cleanFilename(pathStr: string): string {
 	return parts[parts.length - 1] || clean;
 }
 
+function escapeRegExp(string: string): string {
+	return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /**
  * Analyse le contenu texte d'un fichier .osu et extrait ses propriétés et ses notes.
  *
@@ -28,6 +32,7 @@ export function parseOsuFile(content: string, filename?: string): ParsedOsuMap {
 	let version = 'Normal';
 	let audioFilename = 'audio.mp3';
 	let bgFilename: string | undefined = undefined;
+	let videoFilename: string | undefined = undefined;
 	let bpm = 120;
 	let mode = 1; // Default taiko
 
@@ -58,9 +63,16 @@ export function parseOsuFile(content: string, filename?: string): ParsedOsuMap {
 			else if (k === 'Creator') mapper = v;
 			else if (k === 'Version') version = v;
 		} else if (currentSection === 'Events') {
-			const match = line.match(/^0,0,"([^"]+)"/);
-			if (match && match[1]) {
-				bgFilename = cleanFilename(match[1]);
+			const parts = line.split(',');
+			if (parts.length >= 3) {
+				const eventType = parts[0].trim().toLowerCase();
+				const cleanPath = parts[2].trim().replace(/^["']|["']$/g, '');
+
+				if (eventType === '0' || eventType === '3') {
+					if (cleanPath) bgFilename = cleanFilename(cleanPath);
+				} else if (eventType === '1' || eventType === 'video') {
+					if (cleanPath) videoFilename = cleanFilename(cleanPath);
+				}
 			}
 		} else if (currentSection === 'TimingPoints') {
 			const parts = line.split(',');
@@ -235,6 +247,7 @@ export function parseOsuFile(content: string, filename?: string): ParsedOsuMap {
 		bpm: bpm || 120,
 		audioFilename,
 		bgFilename,
+		videoFilename,
 		mode,
 		hitObjects,
 		filename
@@ -261,6 +274,7 @@ export async function parseOszFile(fileOrBuffer: File | ArrayBuffer): Promise<Pa
 	let mainArtist = '';
 	let mainMapper = '';
 	let mainBgFilename = '';
+	let mainVideoFilename = '';
 
 	for (const osuFile of osuFiles) {
 		const text = await osuFile.async('text');
@@ -276,11 +290,12 @@ export async function parseOszFile(fileOrBuffer: File | ArrayBuffer): Promise<Pa
 		if (!mainArtist) mainArtist = parsed.artist;
 		if (!mainMapper) mainMapper = parsed.mapper;
 		if (!mainBgFilename && parsed.bgFilename) mainBgFilename = parsed.bgFilename;
+		if (!mainVideoFilename && parsed.videoFilename) mainVideoFilename = parsed.videoFilename;
 	}
 
 	// Trouver l'audio dans le ZIP
 	let audioBlob: Blob | undefined;
-	let audioZipEntry = mainAudioFilename ? zip.file(new RegExp(mainAudioFilename, 'i'))[0] : null;
+	let audioZipEntry = mainAudioFilename ? zip.file(new RegExp(escapeRegExp(mainAudioFilename), 'i'))[0] : null;
 	if (!audioZipEntry) {
 		audioZipEntry = zip.file(/\.(mp3|ogg|wav)$/i)[0];
 	}
@@ -288,14 +303,33 @@ export async function parseOszFile(fileOrBuffer: File | ArrayBuffer): Promise<Pa
 		audioBlob = await audioZipEntry.async('blob');
 	}
 
-	// Trouver l'image de fond dans le ZIP
+	// Trouver l'image ou la vidéo de fond et la miniature dans le ZIP
 	let bgBlob: Blob | undefined;
-	let bgZipEntry = mainBgFilename ? zip.file(new RegExp(mainBgFilename, 'i'))[0] : null;
+	let coverBlob: Blob | undefined;
+	let isVideo = false;
+
+	// 1. Chercher l'image de fond (utilisée pour la miniature carrée et l'arrière-plan de niveau si pas de vidéo)
+	let bgZipEntry = mainBgFilename ? zip.file(new RegExp(escapeRegExp(mainBgFilename), 'i'))[0] : null;
 	if (!bgZipEntry) {
-		bgZipEntry = zip.file(/\.(jpg|jpeg|png)$/i)[0];
+		bgZipEntry = zip.file(/\.(jpg|jpeg|png|webp)$/i)[0];
 	}
+
 	if (bgZipEntry) {
-		bgBlob = await bgZipEntry.async('blob');
+		const imgBlob = await bgZipEntry.async('blob');
+		coverBlob = imgBlob;
+		bgBlob = imgBlob;
+		isVideo = false;
+	}
+
+	// 2. Chercher la vidéo de fond si spécifiée ou présente dans l'archive
+	let videoZipEntry = mainVideoFilename ? zip.file(new RegExp(escapeRegExp(mainVideoFilename), 'i'))[0] : null;
+	if (!videoZipEntry) {
+		videoZipEntry = zip.file(/\.(mp4|webm|avi|mkv)$/i)[0];
+	}
+
+	if (videoZipEntry) {
+		bgBlob = await videoZipEntry.async('blob');
+		isVideo = true;
 	}
 
 	return {
@@ -305,6 +339,8 @@ export async function parseOszFile(fileOrBuffer: File | ArrayBuffer): Promise<Pa
 		audioFilename: mainAudioFilename,
 		audioBlob,
 		bgBlob,
+		coverBlob,
+		isVideo,
 		difficulties
 	};
 }
