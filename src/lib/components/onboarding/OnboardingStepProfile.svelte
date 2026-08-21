@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { User, Keyboard, ArrowRight } from '@lucide/svelte';
 	import Button from '$lib/components/Button.svelte';
+	import { _ } from '$lib/i18n';
 
 	let {
 		username = $bindable(),
@@ -16,7 +17,7 @@
 
 	function handleNext() {
 		if (!username.trim()) {
-			alert('Veuillez entrer un pseudo pour commencer !');
+			alert($_('onboarding.profile.error_username'));
 			return;
 		}
 		onNext();
@@ -26,14 +27,14 @@
 <div class="flex flex-col gap-6 text-left">
 	<div class="flex flex-col gap-2">
 		<label for="username-input" class="text-sm md:text-base font-black uppercase tracking-wider text-text flex items-center gap-2">
-			<User class="w-5 h-5 text-primary" /> Quel est votre pseudo ?
+			<User class="w-5 h-5 text-primary" /> {$_('onboarding.profile.username_title')}
 		</label>
 		<div class="relative w-full">
 			<input 
 				id="username-input" 
 				type="text" 
 				bind:value={username} 
-				placeholder="Ex: RhythmMaster99" 
+				placeholder={$_('onboarding.profile.username_placeholder')} 
 				maxlength="20" 
 				class="w-full px-4 py-3 bg-secondary/35 border-4 border-secondary text-text font-black rounded-lg focus:outline-none focus:border-primary placeholder:text-text-dim text-lg tracking-wide"
 			/>
@@ -42,7 +43,7 @@
 
 	<div class="flex flex-col gap-2">
 		<label class="text-sm md:text-base font-black uppercase tracking-wider text-text flex items-center gap-2">
-			<Keyboard class="w-5 h-5 text-primary" /> Quelle disposition souhaitez-vous apprendre ?
+			<Keyboard class="w-5 h-5 text-primary" /> {$_('onboarding.profile.layout_title')}
 		</label>
 		
 		<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-1">
@@ -73,7 +74,7 @@
 	<div class="flex justify-end border-t-4 border-secondary pt-6 mt-4">
 		<Button onclick={handleNext} disabled={!username.trim()} shortcut="ENTER">
 			<span>
-				SUIVANT <ArrowRight class="inline w-5 h-5 ml-1" />
+				{$_('common.next')} <ArrowRight class="inline w-5 h-5 ml-1" />
 			</span>
 		</Button>
 	</div>
