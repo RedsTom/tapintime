@@ -13,6 +13,8 @@
 	let layout = $state<Layout | null>(null);
 	let manifest = $state<Manifest | null>(null);
 	let audioBlob = $state<Blob | null>(null);
+	let bgBlob = $state<Blob | undefined>(undefined);
+	let isVideo = $state<boolean>(false);
 	let error = $state<string | null>(null);
 
 	onMount(async () => {
@@ -24,6 +26,9 @@
 			const customMap = await getCustomBeatmap(mapName);
 			if (customMap) {
 				manifest = customMap.manifest;
+				bgBlob = customMap.bgBlob;
+				isVideo = !!customMap.isVideo;
+
 				if (customMap.audioBlob) {
 					audioBlob = customMap.audioBlob;
 				} else {
@@ -51,6 +56,17 @@
 				const audioFile = zip.file('audio.mp3') ?? zip.file('audio.ogg');
 				if (!audioFile) throw new Error('Fichier audio manquant');
 				audioBlob = await audioFile.async('blob');
+
+				const videoFile = zip.file(/\.(mp4|webm|avi|mkv)$/i)[0];
+				const imageFile = zip.file(/\.(jpg|jpeg|png|webp)$/i)[0];
+
+				if (videoFile) {
+					bgBlob = await videoFile.async('blob');
+					isVideo = true;
+				} else if (imageFile) {
+					bgBlob = await imageFile.async('blob');
+					isVideo = false;
+				}
 			}
 		} catch (e) {
 			error = String(e);
@@ -71,7 +87,7 @@
 			</a>
 		</div>
 	{:else if layout && manifest && audioBlob}
-		<Game {layout} {manifest} {audioBlob} mapId={mapName} />
+		<Game {layout} {manifest} {audioBlob} {bgBlob} {isVideo} mapId={mapName} />
 	{:else}
 		<div class="flex flex-col items-center gap-3">
 			<div class="w-12 h-12 rounded-full border-4 border-t-primary border-secondary animate-spin"></div>

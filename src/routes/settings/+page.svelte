@@ -395,6 +395,25 @@
 
 							<div class="w-full h-px bg-secondary/30 my-1"></div>
 
+							<!-- Background Level Media Toggle -->
+							<div class="flex items-center justify-between gap-4">
+								<div class="flex flex-col text-left gap-1">
+									<span class="text-sm md:text-base font-black uppercase tracking-wider text-text">Afficher le Fond du Niveau</span>
+									<span class="text-[10px] font-black text-text-dim uppercase tracking-wider leading-tight">Affiche l'image ou la vidéo de fond dans le niveau. Désactivez pour conserver le fond sombre d'origine.</span>
+								</div>
+								<Checkbox bind:checked={settings.showLevelBackground} onchange={updateSettings} />
+							</div>
+
+							<!-- Background Dim Slider -->
+							{#if settings.showLevelBackground}
+								<div class="pt-2 border-t-2 border-secondary/20">
+									<Slider label="Obscurcissement du fond (%)" min={0} max={100} step={5} bind:value={settings.backgroundDim} onchange={updateSettings} />
+									<span class="text-[9px] font-black uppercase text-text-dim/70 leading-tight">Assombrit le fond pour une visibilité optimale des notes (0% = clair, 100% = noir complet).</span>
+								</div>
+							{/if}
+
+							<div class="w-full h-px bg-secondary/30 my-1"></div>
+
 							<!-- Background Parallax -->
 							<div class="flex items-center justify-between gap-4">
 								<div class="flex flex-col text-left gap-1">

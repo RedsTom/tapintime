@@ -15,13 +15,31 @@
 		layout,
 		manifest,
 		audioBlob,
+		bgBlob,
+		isVideo = false,
 		mapId = 'tutorial'
 	}: {
 		layout: Layout;
 		manifest: Manifest;
 		audioBlob: Blob;
+		bgBlob?: Blob;
+		isVideo?: boolean;
 		mapId?: string;
 	} = $props();
+
+	let bgUrl = $state<string | null>(null);
+
+	$effect(() => {
+		if (bgBlob) {
+			const url = URL.createObjectURL(bgBlob);
+			bgUrl = url;
+			return () => {
+				URL.revokeObjectURL(url);
+			};
+		} else {
+			bgUrl = null;
+		}
+	});
 
 	let canvasEl: HTMLCanvasElement | undefined = $state();
 	let engine = $state<Engine | null>(null);
@@ -62,19 +80,50 @@
 		selectedKeys = new Set(selectedKeys);
 	}
 
-	onMount(async () => {
-		settings = await loadSettings();
-		const prog = await loadProgression();
-		unlockedKeys = new Set(getUnlockedKeys(prog.xp, layout, settings?.layoutFamiliarity ?? 1));
-		selectedKeys = new Set(unlockedKeys);
+	function returnToLevelList() {
+		window.location.href = '/';
+	}
 
-		setMasterVolume(settings.masterVolume / 100);
-		setEffectsVolume(settings.effectsVolume / 100);
+	onMount(() => {
+		let cleanupKeydown: (() => void) | undefined;
 
-		await loadAudio(audioBlob);
+		async function init() {
+			settings = await loadSettings();
+			const prog = await loadProgression();
+			unlockedKeys = new Set(getUnlockedKeys(prog.xp, layout, settings?.layoutFamiliarity ?? 1));
+			selectedKeys = new Set(unlockedKeys);
 
-		isLoaded = true;
-		showKeySelector = true;
+			setMasterVolume(settings.masterVolume / 100);
+			setEffectsVolume(settings.effectsVolume / 100);
+
+			await loadAudio(audioBlob);
+
+			isLoaded = true;
+			showKeySelector = true;
+
+			function handlePreGameKeys(e: KeyboardEvent) {
+				if (showKeySelector && isLoaded) {
+					if (e.key === 'Escape') {
+						e.preventDefault();
+						returnToLevelList();
+					} else if (e.key === 'Enter') {
+						e.preventDefault();
+						if (selectedKeys.size >= 2) {
+							initEngineAndStart();
+						}
+					}
+				}
+			}
+
+			window.addEventListener('keydown', handlePreGameKeys);
+			cleanupKeydown = () => window.removeEventListener('keydown', handlePreGameKeys);
+		}
+
+		init();
+
+		return () => {
+			if (cleanupKeydown) cleanupKeydown();
+		};
 	});
 
 	// Throttle HUD via requestAnimationFrame — batch les updates pour éviter les re-renders Svelte excessifs
@@ -191,10 +240,43 @@
 			engine = null;
 		}
 	});
+	const showLevelBg = $derived(settings?.showLevelBackground ?? true);
+	const bgDimPercent = $derived(settings?.backgroundDim ?? 50);
 </script>
 
 <div class="relative w-full h-screen overflow-hidden bg-bg select-none">
-	<canvas bind:this={canvasEl} class="w-full h-full block absolute inset-0 z-0"></canvas>
+	<!-- Arrière-plan adaptatif (Image ou Vidéo de fond) uniquement si activé dans les paramètres -->
+	{#if bgUrl && showLevelBg && bgDimPercent < 100}
+		{@const mediaOpacity = Math.max(0, (100 - bgDimPercent) / 100)}
+		{@const overlayOpacity = bgDimPercent / 100}
+		<div class="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none">
+			{#if isVideo}
+				<video
+					src={bgUrl}
+					autoplay
+					loop
+					muted
+					playsinline
+					class="w-full h-full object-cover filter blur-[1px] transition-opacity duration-300"
+					style="opacity: {mediaOpacity};"
+				></video>
+			{:else}
+				<img
+					src={bgUrl}
+					alt="Background"
+					class="w-full h-full object-cover filter blur-[1px] transition-opacity duration-300"
+					style="opacity: {mediaOpacity};"
+				/>
+			{/if}
+			<!-- Voile assombrissant configurable selon les paramètres -->
+			<div
+				class="absolute inset-0 bg-bg transition-opacity duration-300"
+				style="opacity: {overlayOpacity};"
+			></div>
+		</div>
+	{/if}
+
+	<canvas bind:this={canvasEl} class="w-full h-full block absolute inset-0 z-10 focus:outline-none"></canvas>
 
 	<!-- Overlay de préchargement -->
 	{#if !isLoaded}
@@ -232,13 +314,32 @@
 					/>
 				</div>
 
-				<button
-					onclick={initEngineAndStart}
-					disabled={selectedKeys.size < 2}
-					class="border-4 border-secondary bg-primary text-secondary px-10 py-4 rounded-lg font-black uppercase text-base md:text-lg shadow-[6px_6px_0px_#ff3366] hover:translate-x-[2px] hover:translate-y-[2px] cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0 flex items-center gap-3 active:scale-95"
-				>
-					<Play class="w-6 h-6 fill-secondary" /> LANCER LA PARTIE
-				</button>
+				<div class="flex flex-wrap items-center justify-center gap-4 w-full">
+					<button
+						onclick={returnToLevelList}
+						class="border-4 border-secondary bg-surface text-text hover:bg-secondary/30 px-6 py-4 rounded-xl font-black uppercase text-sm md:text-base shadow-[4px_4px_0px_#1a0033] hover:translate-x-[1px] hover:translate-y-[1px] cursor-pointer transition-all flex items-center gap-2"
+						title="Retourner à la liste des niveaux (Échap)"
+					>
+						<ArrowLeft class="w-5 h-5 text-accent" />
+						<span>RETOUR</span>
+						<kbd class="px-2 py-0.5 text-xs bg-secondary text-primary border border-secondary rounded font-mono font-black uppercase shadow-sm">
+							ÉCHAP
+						</kbd>
+					</button>
+
+					<button
+						onclick={initEngineAndStart}
+						disabled={selectedKeys.size < 2}
+						class="border-4 border-secondary bg-primary text-secondary px-8 py-4 rounded-xl font-black uppercase text-base md:text-lg shadow-[6px_6px_0px_#ff3366] hover:translate-x-[2px] hover:translate-y-[2px] cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0 flex items-center gap-3 active:scale-95"
+						title="Lancer la partie (Entrée)"
+					>
+						<Play class="w-6 h-6 fill-secondary" />
+						<span>LANCER LA PARTIE</span>
+						<kbd class="px-2 py-0.5 text-xs bg-secondary text-primary border border-secondary rounded font-mono font-black uppercase shadow-sm">
+							ENTRÉE ↵
+						</kbd>
+					</button>
+				</div>
 			</div>
 		</div>
 	{/if}
