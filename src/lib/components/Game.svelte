@@ -149,6 +149,10 @@
 
 	async function initEngineAndStart() {
 		await ensureAudioContextRunning();
+		if (settings) {
+			setMasterVolume(settings.masterVolume / 100);
+			setEffectsVolume(settings.effectsVolume / 100);
+		}
 		if (canvasEl && !engine) {
 			showKeySelector = false;
 			const instance = new Engine(

@@ -11,9 +11,30 @@ export function setMasterVolume(vol: number): void {
 	masterVolume = Math.max(0, Math.min(1, vol));
 	if (gainNode) {
 		const ctx = getAudioContext();
-		// Update running music volume smoothly
-		gainNode.gain.linearRampToValueAtTime(masterVolume, ctx.currentTime + 0.1);
+		try {
+			gainNode.gain.cancelScheduledValues(ctx.currentTime);
+			gainNode.gain.setValueAtTime(gainNode.gain.value, ctx.currentTime);
+			gainNode.gain.linearRampToValueAtTime(masterVolume, ctx.currentTime + 0.05);
+
+			if (audioBuffer && audioZeroTime > 0) {
+				const FADE_OUT_DURATION = 1.5;
+				const duration = audioBuffer.duration;
+				const fadeOutStartTime = audioZeroTime + Math.max(0, duration - FADE_OUT_DURATION);
+				if (fadeOutStartTime > ctx.currentTime + 0.1) {
+					gainNode.gain.setValueAtTime(masterVolume, fadeOutStartTime);
+					gainNode.gain.linearRampToValueAtTime(0.001, fadeOutStartTime + FADE_OUT_DURATION);
+				}
+			}
+		} catch {}
 	}
+}
+
+export function getMasterVolume(): number {
+	return masterVolume;
+}
+
+export function getEffectsVolume(): number {
+	return effectsVolume;
 }
 
 export function setEffectsVolume(vol: number): void {

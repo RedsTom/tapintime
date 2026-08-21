@@ -1,4 +1,6 @@
 import { getCustomBeatmap } from '../../storage';
+import { loadSettings } from '../../settings';
+import { getMasterVolume } from '../../audio';
 
 /**
  * Service autonome pour la pré-écoute audio des beatmaps dans les menus.
@@ -37,16 +39,24 @@ export class AudioPreviewManager {
 			}
 
 			if (blob) {
+				const userSettings = await loadSettings();
+				const masterVol = userSettings ? userSettings.masterVolume / 100 : getMasterVolume();
+				const targetVol = masterVol * 0.5;
+
 				this.currentPreviewUrl = URL.createObjectURL(blob);
 				this.previewAudio = new Audio(this.currentPreviewUrl);
 				this.previewAudio.volume = 0;
 				this.previewAudio.loop = true;
 
+				if (targetVol <= 0) {
+					this.previewAudio.volume = 0;
+					return;
+				}
+
 				const playPromise = this.previewAudio.play();
 				if (playPromise !== undefined) {
 					await playPromise;
 					let vol = 0;
-					const targetVol = 0.4;
 					const step = targetVol / 16;
 					const fadeTimer = setInterval(() => {
 						if (!this.previewAudio) {
