@@ -10,6 +10,7 @@
 
 	import { onMount } from 'svelte';
 	import { loadSettings } from '$lib/settings';
+	import { setLanguage, _ } from '$lib/i18n';
 
 	let { children } = $props();
 
@@ -19,6 +20,9 @@
 
 	onMount(async () => {
 		const settings = await loadSettings();
+		if (settings.language) {
+			setLanguage(settings.language);
+		}
 		if (!settings.onboardingCompleted && window.location.pathname !== '/onboarding') {
 			window.location.href = '/onboarding';
 		}
@@ -38,9 +42,9 @@
 	{#if !isPlayRoute && !isOnboardingRoute && !isEditorRoute}
 		<div class="w-full bg-accent/90 border-b-4 border-secondary px-4 py-1.5 flex items-center justify-between gap-4 select-none">
 			<p class="text-secondary text-xs md:text-sm font-black uppercase tracking-wider flex items-center gap-2">
-				<span class="bg-secondary text-accent px-2 py-0.5 rounded text-[10px] md:text-xs font-black tracking-widest">BÊTA</span>
-				<span class="hidden sm:inline">Cette application est en bêta et peut contenir des bugs.</span>
-				<span class="sm:hidden">Application en bêta.</span>
+				<span class="bg-secondary text-accent px-2 py-0.5 rounded text-[10px] md:text-xs font-black tracking-widest">{$_('common.beta')}</span>
+				<span class="hidden sm:inline">{$_('common.beta_warning_desktop')}</span>
+				<span class="sm:hidden">{$_('common.beta_warning_mobile')}</span>
 			</p>
 			<a
 				href="https://github.com/RedsTom/tapintime/issues"
@@ -48,7 +52,7 @@
 				rel="noopener noreferrer"
 				class="shrink-0 border-2 border-secondary bg-secondary text-accent px-3 py-1 rounded font-black uppercase text-[10px] md:text-xs tracking-wider hover:bg-secondary/80 transition-colors flex items-center gap-1.5"
 			>
-				<Bug class="w-3.5 h-3.5" /> Signaler un bug
+				<Bug class="w-3.5 h-3.5" /> {$_('common.report_bug')}
 			</a>
 		</div>
 		<GameHeader />

@@ -2,6 +2,7 @@
 	import { onMount, onDestroy, untrack } from 'svelte';
 	import Button from '$lib/components/Button.svelte';
 	import { Eye, Volume2, CheckCircle2, Activity } from '@lucide/svelte';
+	import { _ } from '$lib/i18n';
 
 	let {
 		visualOffsetMs = 0,
@@ -144,7 +145,7 @@
 					? 'bg-primary text-secondary shadow-[2px_2px_0px_#1a0033]'
 					: 'text-text-dim hover:text-text'}"
 		>
-			<Eye class="w-4 h-4" /> Calibration Visuelle
+			<Eye class="w-4 h-4" /> {$_('calibration_tool.visual_tab')}
 		</button>
 		<button
 			onclick={() => switchTab('audio')}
@@ -153,7 +154,7 @@
 					? 'bg-accent text-secondary shadow-[2px_2px_0px_#1a0033]'
 					: 'text-text-dim hover:text-text'}"
 		>
-			<Volume2 class="w-4 h-4" /> Calibration Audio
+			<Volume2 class="w-4 h-4" /> {$_('calibration_tool.audio_tab')}
 		</button>
 	</div>
 
@@ -177,15 +178,15 @@
 		{#if !isPlaying}
 			<div class="mt-6">
 				<Button variant="primary" size="md" onclick={startCalibration}>
-					DÉMARRER LE TEST (N'IMPORTE QUELLE TOUCHE)
+					{$_('calibration_tool.start_test')}
 				</Button>
 			</div>
 		{:else}
 			<div class="mt-4 text-center">
 				<p class="text-xs font-black uppercase text-text-dim animate-pulse">
-					Appuyez sur n'importe quelle touche en rythme avec les {activeTab === 'visual' ? 'flashes' : 'bips'}...
+					{activeTab === 'visual' ? $_('calibration_tool.press_rhythm_flashes') : $_('calibration_tool.press_rhythm_beeps')}
 				</p>
-				<p class="text-[10px] text-text-dim mt-1">({tapOffsets.length} / 8 frappes enregistrées)</p>
+				<p class="text-[10px] text-text-dim mt-1">({$_('calibration_tool.taps_recorded', { values: { count: tapOffsets.length } })})</p>
 			</div>
 		{/if}
 	</div>
@@ -194,18 +195,18 @@
 	<div class="bg-surface border-4 border-secondary p-4 rounded-xl flex items-center justify-between shadow-[4px_4px_0px_#1a0033]">
 		<div>
 			<span class="text-xs font-black uppercase text-text-dim block">
-				Décalage {activeTab === 'visual' ? 'visuel' : 'audio'} calculé :
+				{activeTab === 'visual' ? $_('calibration_tool.calculated_visual_offset') : $_('calibration_tool.calculated_audio_offset')}
 			</span>
 			<span class="text-2xl font-black text-primary">
 				{#if activeTab === 'visual'}
-					{calculatedVisualOffset !== null ? `${calculatedVisualOffset} ms` : 'Non mesuré'}
+					{calculatedVisualOffset !== null ? `${calculatedVisualOffset} ms` : $_('calibration_tool.not_measured')}
 				{:else}
-					{calculatedAudioOffset !== null ? `${calculatedAudioOffset} ms` : 'Non mesuré'}
+					{calculatedAudioOffset !== null ? `${calculatedAudioOffset} ms` : $_('calibration_tool.not_measured')}
 				{/if}
 			</span>
 		</div>
 		<Button variant="accent" size="md" onclick={saveAndFinish}>
-			<CheckCircle2 class="w-4 h-4" /> ENREGISTRER & VALIDER
+			<CheckCircle2 class="w-4 h-4" /> {$_('calibration_tool.save_validate')}
 		</Button>
 	</div>
 </div>

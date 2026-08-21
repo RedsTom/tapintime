@@ -5,6 +5,7 @@
 	import { loadSettings, type UserSettings } from '../../../settings';
 	import { BarChart2, Music, Settings, Wrench } from '@lucide/svelte';
 	import { onMount } from 'svelte';
+	import { _ } from '$lib/i18n';
 
 	let progression = $state<ProgressionData | null>(null);
 	let settings = $state<UserSettings | null>(null);
@@ -39,7 +40,7 @@
 				}
 			"
 		>
-			<Music class="w-4 h-4" /> Niveaux
+			<Music class="w-4 h-4" /> {$_('header.levels')}
 		</a>
 
 		<a 
@@ -52,7 +53,7 @@
 				}
 			"
 		>
-			<Wrench class="w-4 h-4" /> Éditeurs
+			<Wrench class="w-4 h-4" /> {$_('header.editors')}
 		</a>
 
 		<a 
@@ -65,7 +66,7 @@
 				}
 			"
 		>
-			<BarChart2 class="w-4 h-4" /> Stats
+			<BarChart2 class="w-4 h-4" /> {$_('header.stats')}
 		</a>
 
 		<a 
@@ -78,7 +79,7 @@
 				}
 			"
 		>
-			<Settings class="w-4 h-4" /> Paramètres
+			<Settings class="w-4 h-4" /> {$_('header.settings')}
 		</a>
 	</nav>
 
@@ -91,7 +92,7 @@
 
 			<div class="flex flex-col gap-1 w-32 md:w-40 text-left">
 				<div class="flex justify-between text-[10px] font-black tracking-wider uppercase">
-					<span class="text-text">NIV {levelInfo.level}</span>
+					<span class="text-text">{$_('header.level_short')} {levelInfo.level}</span>
 					<span class="text-text-dim">{levelInfo.currentXp}/{levelInfo.nextLevelXp} XP</span>
 				</div>
 				<div class="w-full h-3.5 bg-bg border-2 border-secondary rounded overflow-hidden relative">

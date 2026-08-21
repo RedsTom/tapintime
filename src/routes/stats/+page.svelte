@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { COLORS, SHADOW, SPACING } from '$lib/tokens';
-	import { FINGER_COLORS, FINGER_LABELS, getFingerColor } from '$lib/fingerColors';
+	import { FINGER_COLORS, getFingerColor } from '$lib/fingerColors';
 	import { loadProgression, getPlayerLevel, type ProgressionData, type FingerStats } from '$lib/progression';
 	import type { Finger } from '$lib/schemas/titl';
 	import { BarChart2, Award, Trophy, Hand, Keyboard, Zap, Clock } from '@lucide/svelte';
+	import { _ } from '$lib/i18n';
 
 	let progression = $state<ProgressionData | null>(null);
 
@@ -31,10 +32,10 @@
 	<!-- Page Header -->
 	<div class="flex flex-col gap-1.5 border-b-4 border-secondary pb-4">
 		<h1 class="text-2xl md:text-3xl font-black uppercase tracking-wider text-primary flex items-center gap-2">
-			<BarChart2 class="w-7 h-7" /> PROGRESSION & STATISTIQUES
+			<BarChart2 class="w-7 h-7" /> {$_('stats.title')}
 		</h1>
 		<p class="text-xs md:text-sm font-bold text-text-dim uppercase tracking-wider">
-			Analysez votre vitesse de frappe, la précision de chaque doigt et l'historique de vos parties.
+			{$_('stats.subtitle')}
 		</p>
 	</div>
 
@@ -44,16 +45,16 @@
 			<div class="flex items-center gap-5 w-full lg:w-auto">
 				<!-- Big Level Badge -->
 				<div class="flex flex-col items-center justify-center w-16 h-16 bg-accent border-4 border-secondary text-secondary rounded-lg shadow-[3px_3px_0px_0px_#ffc145] select-none">
-					<span class="text-[10px] font-black uppercase tracking-wider leading-none">NIV</span>
+					<span class="text-[10px] font-black uppercase tracking-wider leading-none">{$_('header.level_short')}</span>
 					<span class="text-3xl font-black leading-none mt-0.5">{levelInfo.level}</span>
 				</div>
 
 				<div class="flex flex-col gap-1 text-left flex-1">
 					<h2 class="text-base md:text-lg font-black uppercase tracking-wider text-primary flex items-center gap-1.5">
-						<Zap class="w-5 h-5 fill-primary text-primary" /> XP TOTALE : {progression.xp} PTS
+						<Zap class="w-5 h-5 fill-primary text-primary" /> {$_('stats.total_xp', { values: { xp: progression.xp } })}
 					</h2>
 					<span class="text-[10px] font-black text-text-dim uppercase tracking-wider">
-						{levelInfo.currentXp} / {levelInfo.nextLevelXp} XP jusqu'au prochain niveau
+						{$_('stats.xp_until_next', { values: { current: levelInfo.currentXp, next: levelInfo.nextLevelXp } })}
 					</span>
 					<div class="w-full sm:w-64 h-3.5 bg-bg border-2 border-secondary rounded overflow-hidden mt-1.5">
 						<div 
@@ -68,7 +69,7 @@
 			<div class="grid grid-cols-3 gap-3 w-full lg:w-auto select-none">
 				<div class="bg-secondary/45 border-4 border-secondary px-4 py-3 rounded-lg flex flex-col justify-center items-center text-center">
 					<span class="text-[9px] font-black uppercase tracking-wider text-text-dim flex items-center gap-1 mb-1">
-						<Award class="w-3.5 h-3.5" /> MAPS
+						<Award class="w-3.5 h-3.5" /> {$_('stats.maps')}
 					</span>
 					<div class="text-xl font-black text-white leading-none">
 						{progression.mapsCompleted.length}
@@ -77,7 +78,7 @@
 
 				<div class="bg-secondary/45 border-4 border-secondary px-4 py-3 rounded-lg flex flex-col justify-center items-center text-center">
 					<span class="text-[9px] font-black uppercase tracking-wider text-text-dim flex items-center gap-1 mb-1">
-						<Trophy class="w-3.5 h-3.5 fill-primary text-primary" /> RECORDS
+						<Trophy class="w-3.5 h-3.5 fill-primary text-primary" /> {$_('stats.records')}
 					</span>
 					<div class="text-xl font-black text-white leading-none">
 						{Object.keys(progression.mapScores).length}
@@ -86,7 +87,7 @@
 
 				<div class="bg-secondary/45 border-4 border-secondary px-4 py-3 rounded-lg flex flex-col justify-center items-center text-center">
 					<span class="text-[9px] font-black uppercase tracking-wider text-text-dim flex items-center gap-1 mb-1">
-						<Clock class="w-3.5 h-3.5 text-accent" /> LATENCE
+						<Clock class="w-3.5 h-3.5 text-accent" /> {$_('stats.latency')}
 					</span>
 					<div class="text-xl font-black text-accent font-mono leading-none">
 						{progression.averageLatencyMs ? (progression.averageLatencyMs > 0 ? `+${progression.averageLatencyMs}` : progression.averageLatencyMs) : 0} ms
@@ -95,20 +96,20 @@
 			</div>
 		</div>
 
-		<!-- Finger Accuracy Breakdown (Alignement parfait des mains Gauche & Droite) -->
+		<!-- Finger Accuracy Breakdown -->
 		<div class="bg-surface border-4 border-secondary p-6 rounded-xl shadow-[6px_6px_0px_0px_#ffc145] flex flex-col gap-4 text-left">
 			<h2 class="text-lg font-black uppercase tracking-wider text-primary flex items-center gap-2 border-b-2 border-secondary pb-2">
-				<Hand class="w-5 h-5" /> Précision par Doigt (10 Doigts)
+				<Hand class="w-5 h-5" /> {$_('stats.finger_accuracy')}
 			</h2>
 
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1">
-				<!-- Main Gauche (Auriculaire -> Pouce) -->
+				<!-- Main Gauche -->
 				<div class="flex flex-col gap-3">
 					<h3 class="text-xs font-black uppercase tracking-wider text-text-dim border-b border-secondary/20 pb-1">
-						Main Gauche
+						{$_('stats.left_hand')}
 					</h3>
 					{#each leftHandFingers as fingerKey}
-						{@const label = FINGER_LABELS[fingerKey]}
+						{@const label = $_(`finger_labels.${fingerKey}`)}
 						{@const stats = progression.fingerStats[fingerKey]}
 						{@const acc = getAccuracyForStats(stats)}
 						{@const color = getFingerColor(fingerKey)}
@@ -119,7 +120,7 @@
 									<div class="w-3 h-3 rounded-full border-2 border-secondary" style="background-color: {color}"></div>
 									<div class="flex flex-col text-left">
 										<span class="text-xs font-black uppercase tracking-wider leading-none text-text">{label}</span>
-										<span class="text-[9px] font-black uppercase tracking-wider text-text-dim mt-1">{stats?.totalHits ?? 0} frappes</span>
+										<span class="text-[9px] font-black uppercase tracking-wider text-text-dim mt-1">{$_('stats.hits_count', { values: { count: stats?.totalHits ?? 0 } })}</span>
 									</div>
 								</div>
 
@@ -140,13 +141,13 @@
 					{/each}
 				</div>
 
-				<!-- Main Droite (Mirroire symétrique: Auriculaire -> Pouce) -->
+				<!-- Main Droite -->
 				<div class="flex flex-col gap-3">
 					<h3 class="text-xs font-black uppercase tracking-wider text-text-dim border-b border-secondary/20 pb-1">
-						Main Droite
+						{$_('stats.right_hand')}
 					</h3>
 					{#each rightHandFingers as fingerKey}
-						{@const label = FINGER_LABELS[fingerKey]}
+						{@const label = $_(`finger_labels.${fingerKey}`)}
 						{@const stats = progression.fingerStats[fingerKey]}
 						{@const acc = getAccuracyForStats(stats)}
 						{@const color = getFingerColor(fingerKey)}
@@ -157,7 +158,7 @@
 									<div class="w-3 h-3 rounded-full border-2 border-secondary" style="background-color: {color}"></div>
 									<div class="flex flex-col text-left">
 										<span class="text-xs font-black uppercase tracking-wider leading-none text-text">{label}</span>
-										<span class="text-[9px] font-black uppercase tracking-wider text-text-dim mt-1">{stats?.totalHits ?? 0} frappes</span>
+										<span class="text-[9px] font-black uppercase tracking-wider text-text-dim mt-1">{$_('stats.hits_count', { values: { count: stats?.totalHits ?? 0 } })}</span>
 									</div>
 								</div>
 
@@ -183,12 +184,12 @@
 		<!-- Key Heatmap & Breakdown -->
 		<div class="bg-surface border-4 border-secondary p-6 rounded-xl shadow-[6px_6px_0px_0px_#ffc145] flex flex-col gap-4 text-left">
 			<h2 class="text-lg font-black uppercase tracking-wider text-primary flex items-center gap-2 border-b-2 border-secondary pb-2">
-				<Keyboard class="w-5 h-5" /> Précision par Touche
+				<Keyboard class="w-5 h-5" /> {$_('stats.unlocked_keys')}
 			</h2>
 
 			{#if Object.keys(progression.keyStats).length === 0}
 				<div class="border-2 border-dashed border-secondary/50 bg-secondary/15 py-8 rounded-lg text-center font-black text-text-dim text-xs uppercase tracking-wider">
-					Jouez des parties pour débloquer les statistiques individuelles des touches
+					{$_('stats.key_stats_empty')}
 				</div>
 			{:else}
 				<div class="flex flex-wrap gap-2.5 mt-2 select-none justify-start">

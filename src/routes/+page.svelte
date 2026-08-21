@@ -13,6 +13,7 @@
 	import DragAndDropOverlay from '$lib/features/beatmap/components/DragAndDropOverlay.svelte';
 	import type { MapInfo, ParsedOszPackage, OszDifficultyItem } from '$lib/features/beatmap/types';
 	import { Upload, Search, Music, Plus, SlidersHorizontal, ArrowUpDown } from '@lucide/svelte';
+	import { _ } from '$lib/i18n';
 
 	type SortOption = 'recent' | 'difficulty' | 'name' | 'artist' | 'bpm' | 'notes';
 	type SortOrder = 'asc' | 'desc';
@@ -242,7 +243,7 @@
 				<input
 					type="text"
 					bind:value={searchQuery}
-					placeholder="RECHERCHER UNE MAP (TITRE, ARTISTE)..."
+					placeholder={$_('home.search_placeholder')}
 					class="w-full bg-surface border-4 border-secondary rounded-2xl pl-12 pr-4 py-3 text-text font-black text-sm uppercase tracking-wider focus:outline-none focus:border-primary shadow-[5px_5px_0px_#1a0033]"
 				/>
 			</div>
@@ -250,7 +251,7 @@
 			<label
 				class="px-5 py-3 rounded-2xl border-4 border-secondary bg-primary text-secondary shadow-[5px_5px_0px_#1a0033] text-xs font-black uppercase cursor-pointer transition-transform hover:scale-105 flex items-center gap-2 shrink-0"
 			>
-				<Upload class="w-4 h-4" /> Import .osz / .titm
+				<Upload class="w-4 h-4" /> {$_('home.import_btn')}
 				<input
 					type="file"
 					accept=".osz,.titm,.osu"
@@ -268,31 +269,30 @@
 		<div class="flex flex-wrap items-center justify-between gap-3 px-1">
 			<div class="flex flex-wrap items-center gap-2 text-xs font-black uppercase tracking-wider text-text-dim">
 				<SlidersHorizontal class="w-4 h-4 text-primary shrink-0" />
-				<span>Trier par :</span>
+				<span>{$_('home.sort_by')}</span>
 				<select
 					bind:value={sortBy}
 					class="bg-surface border-2 border-secondary rounded-lg px-3 py-1.5 text-text font-black text-xs uppercase tracking-wider cursor-pointer shadow-[2px_2px_0px_#1a0033] focus:outline-none focus:border-primary"
 				>
-					<option value="recent">Dernier joué / Récent</option>
-					<option value="difficulty">Difficulté</option>
-					<option value="name">Titre (Nom)</option>
-					<option value="artist">Artiste</option>
-					<option value="bpm">Tempo (BPM)</option>
-					<option value="notes">Nombre de notes</option>
+					<option value="recent">{$_('home.sort_recent')}</option>
+					<option value="difficulty">{$_('home.sort_difficulty')}</option>
+					<option value="name">{$_('home.sort_title')}</option>
+					<option value="artist">{$_('home.sort_artist')}</option>
+					<option value="bpm">{$_('home.sort_bpm')}</option>
+					<option value="notes">{$_('home.sort_notes')}</option>
 				</select>
 
 				<button
 					onclick={() => (sortOrder = sortOrder === 'asc' ? 'desc' : 'asc')}
 					class="border-2 border-secondary bg-surface text-primary px-3 py-1.5 rounded-lg shadow-[2px_2px_0px_#1a0033] hover:translate-x-[1px] hover:translate-y-[1px] cursor-pointer transition-all flex items-center gap-1.5 font-black text-xs uppercase"
-					title={sortOrder === 'asc' ? 'Ordre Croissant (A-Z, 0-9)' : 'Ordre Décroissant (Z-A, 9-0)'}
 				>
 					<ArrowUpDown class="w-3.5 h-3.5" />
-					<span>{sortOrder === 'asc' ? 'ASC ⬆' : 'DESC ⬇'}</span>
+					<span>{sortOrder === 'asc' ? $_('home.sort_asc') : $_('home.sort_desc')}</span>
 				</button>
 			</div>
 
 			<div class="text-[11px] font-black uppercase tracking-wider text-text-dim">
-				{filteredMaps.length} map{filteredMaps.length > 1 ? 's' : ''} disponible{filteredMaps.length > 1 ? 's' : ''}
+				{$_('home.available_maps', { values: { count: filteredMaps.length } })}
 			</div>
 		</div>
 	</div>
@@ -319,14 +319,14 @@
 					<Music class="w-8 h-8" />
 				</div>
 				<div class="flex flex-col items-center gap-1">
-					<span class="text-base text-text">Aucune carte disponible</span>
-					<span class="text-[11px] text-text-dim max-w-sm">Glissez-déposez ou importez un fichier .osz / .titm ou créez une nouvelle carte dans le Studio pour commencer !</span>
+					<span class="text-base text-text">{$_('home.no_maps_title')}</span>
+					<span class="text-[11px] text-text-dim max-w-sm">{$_('home.no_maps_desc')}</span>
 				</div>
 				<a
 					href="/creator/beatmap"
 					class="border-4 border-secondary bg-primary text-secondary px-5 py-2.5 rounded-xl font-black uppercase text-xs shadow-[3px_3px_0px_#ff3366] hover:translate-x-[1px] hover:translate-y-[1px] cursor-pointer flex items-center gap-2 mt-1"
 				>
-					<Plus class="w-4 h-4" /> Créer une carte
+					<Plus class="w-4 h-4" /> {$_('home.create_map_btn')}
 				</a>
 			</div>
 		{/if}

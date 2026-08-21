@@ -2,6 +2,7 @@
 	import { Key, Lock, Sparkles, Trophy } from '@lucide/svelte';
 	import { getTierInfo, type KeyTier } from '../progression';
 	import type { Layout } from '$lib/schemas/titl';
+	import { _ } from '$lib/i18n';
 
 	let { xp = 0, layout = null }: { xp?: number; layout?: Layout | null } = $props();
 
@@ -17,7 +18,7 @@
 			</div>
 			<div>
 				<div class="text-[10px] font-black uppercase text-accent tracking-widest flex items-center gap-1">
-					<Sparkles class="w-3 h-3" /> PALIER ACTUEL DÉBLOQUÉ
+					<Sparkles class="w-3 h-3" /> {$_('home.current_tier_unlocked')}
 				</div>
 				<div class="text-base font-black uppercase text-primary">
 					{tierInfo.currentTier.name}
@@ -28,10 +29,10 @@
 		{#if tierInfo.nextTier}
 			<div class="flex flex-col items-start sm:items-end text-left sm:text-right">
 				<div class="text-[10px] font-black uppercase text-text-dim tracking-wider">
-					PROCHAIN PALIER : <span class="text-text">{tierInfo.nextTier.name}</span>
+					{$_('home.next_tier')} <span class="text-text">{tierInfo.nextTier.name}</span>
 				</div>
 				<div class="text-xs font-bold text-primary">
-					Encore {tierInfo.xpNeededForNext} XP ({tierInfo.nextTier.xpRequired} XP total)
+					{$_('home.xp_remaining', { values: { remaining: tierInfo.xpNeededForNext, total: tierInfo.nextTier.xpRequired } })}
 				</div>
 				<div class="w-36 h-2.5 bg-bg border-2 border-secondary rounded-full overflow-hidden mt-1 relative">
 					<div
@@ -42,7 +43,7 @@
 			</div>
 		{:else}
 			<div class="text-xs font-black uppercase text-accent">
-				🏆 TOUS LES PALIERS SONT DÉBLOQUÉS !
+				{$_('home.all_tiers_unlocked')}
 			</div>
 		{/if}
 	</div>
