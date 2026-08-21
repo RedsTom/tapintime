@@ -46,6 +46,26 @@
 		D: '#f9564f'
 	};
 
+	function getDifficultyStyle(diff?: string): { bg: string; text: string; border: string } {
+		if (!diff) return { bg: '#FFD500', text: '#150029', border: '#0B0014' };
+		const norm = diff.trim().toUpperCase();
+
+		if (norm === 'EASY' || norm === 'FACILE') {
+			return { bg: '#80D39B', text: '#150029', border: '#0B0014' }; // Vert
+		}
+		if (norm === 'NORMAL' || norm === 'MOYEN') {
+			return { bg: '#5995ED', text: '#ffffff', border: '#0B0014' }; // Bleu
+		}
+		if (norm === 'HARD' || norm === 'DIFFICILE') {
+			return { bg: '#FF9F1C', text: '#150029', border: '#0B0014' }; // Ambre / Orange
+		}
+		if (norm === 'EXPERT' || norm === 'INSANE' || norm === 'MASTER') {
+			return { bg: '#F9564F', text: '#ffffff', border: '#0B0014' }; // Rose vif / Rouge
+		}
+
+		return { bg: '#FFD500', text: '#150029', border: '#0B0014' };
+	}
+
 	function toggleMenu(e: MouseEvent) {
 		e.stopPropagation();
 		isMenuOpen = !isMenuOpen;
@@ -86,11 +106,13 @@
 					{title}
 				</h3>
 				{#if difficulty}
+					{@const diffStyle = getDifficultyStyle(difficulty)}
 					<span 
 						class="
 							px-2 py-0.5 text-[9px] font-black uppercase rounded border-2 border-secondary shrink-0
-							{isSelected ? 'bg-secondary text-primary' : 'bg-accent text-secondary'}
+							shadow-[2px_2px_0px_#0B0014] transition-all
 						"
+						style="background-color: {diffStyle.bg}; color: {diffStyle.text};"
 					>
 						{difficulty}
 					</span>

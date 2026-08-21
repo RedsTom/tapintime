@@ -18,6 +18,8 @@ export interface MapInfo {
 	difficulty: string;
 	/** Nombre total de notes */
 	noteCount: number;
+	/** Horodatage de création (optionnel) */
+	createdAt?: number;
 	/** Fichier audio optionnel sous forme de Blob */
 	blob?: Blob;
 }

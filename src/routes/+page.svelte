@@ -12,11 +12,16 @@
 	import OszImportModal from '$lib/features/beatmap/components/OszImportModal.svelte';
 	import DragAndDropOverlay from '$lib/features/beatmap/components/DragAndDropOverlay.svelte';
 	import type { MapInfo, ParsedOszPackage, OszDifficultyItem } from '$lib/features/beatmap/types';
-	import { Upload, Search, Music, Plus } from '@lucide/svelte';
+	import { Upload, Search, Music, Plus, SlidersHorizontal, ArrowUpDown } from '@lucide/svelte';
+
+	type SortOption = 'recent' | 'difficulty' | 'name' | 'artist' | 'bpm' | 'notes';
+	type SortOrder = 'asc' | 'desc';
 
 	let maps = $state<MapInfo[]>([]);
 	let selectedMapId = $state<string | null>(null);
 	let searchQuery = $state<string>('');
+	let sortBy = $state<SortOption>('recent');
+	let sortOrder = $state<SortOrder>('desc');
 	let progression = $state<ProgressionData | null>(null);
 	let settings = $state<UserSettings | null>(null);
 	let activeLayout = $state<Layout | null>(null);
@@ -36,13 +41,51 @@
 	const selectedMap = $derived(selectedMapId ? maps.find((m) => m.id === selectedMapId) ?? null : null);
 	const selectedMapScore = $derived(selectedMapId ? progression?.mapScores?.[selectedMapId] : undefined);
 
-	const filteredMaps = $derived(
-		maps.filter(
+	const difficultyRank: Record<string, number> = {
+		EASY: 1,
+		FACILE: 1,
+		NORMAL: 2,
+		MOYEN: 2,
+		HARD: 3,
+		DIFFICILE: 3,
+		EXPERT: 4,
+		INSANE: 4,
+		MASTER: 5
+	};
+
+	const filteredMaps = $derived.by(() => {
+		const query = searchQuery.trim().toLowerCase();
+		let list = maps.filter(
 			(m) =>
-				m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				m.artist.toLowerCase().includes(searchQuery.toLowerCase())
-		)
-	);
+				!query ||
+				m.title.toLowerCase().includes(query) ||
+				m.artist.toLowerCase().includes(query) ||
+				m.difficulty.toLowerCase().includes(query)
+		);
+
+		return [...list].sort((a, b) => {
+			let cmp = 0;
+			if (sortBy === 'recent') {
+				const dateA = progression?.mapScores?.[a.id]?.date ?? a.createdAt ?? 0;
+				const dateB = progression?.mapScores?.[b.id]?.date ?? b.createdAt ?? 0;
+				cmp = dateA - dateB;
+			} else if (sortBy === 'difficulty') {
+				const diffA = difficultyRank[a.difficulty.toUpperCase()] ?? 0;
+				const diffB = difficultyRank[b.difficulty.toUpperCase()] ?? 0;
+				cmp = diffA - diffB;
+			} else if (sortBy === 'name') {
+				cmp = a.title.localeCompare(b.title);
+			} else if (sortBy === 'artist') {
+				cmp = a.artist.localeCompare(b.artist);
+			} else if (sortBy === 'bpm') {
+				cmp = (a.bpm || 0) - (b.bpm || 0);
+			} else if (sortBy === 'notes') {
+				cmp = (a.noteCount || 0) - (b.noteCount || 0);
+			}
+
+			return sortOrder === 'asc' ? cmp : -cmp;
+		});
+	});
 
 	$effect(() => {
 		const targetId = selectedMapId;
@@ -145,7 +188,8 @@
 			mapper: 'Moi',
 			bpm: cm.bpm,
 			difficulty: cm.difficulty.toUpperCase(),
-			noteCount: cm.manifest.hitObjects.length
+			noteCount: cm.manifest.hitObjects.length,
+			createdAt: cm.createdAt
 		}));
 
 		maps = mappedCustoms;
@@ -186,33 +230,67 @@
 	<!-- Widget de Progression des Paliers de Touches Adapté au Layout Actif -->
 	<KeysProgressionWidget xp={progression?.xp ?? 0} layout={activeLayout} />
 
-	<!-- Barre de Recherche et Importation -->
-	<div class="flex items-center justify-between gap-4">
-		<div class="relative flex-1">
-			<Search class="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-text-dim" />
-			<input
-				type="text"
-				bind:value={searchQuery}
-				placeholder="RECHERCHER UNE MAP (TITRE, ARTISTE)..."
-				class="w-full bg-surface border-4 border-secondary rounded-2xl pl-12 pr-4 py-3 text-text font-black text-sm uppercase tracking-wider focus:outline-none focus:border-primary shadow-[5px_5px_0px_#1a0033]"
-			/>
+	<!-- Barre de Recherche, Tri et Importation -->
+	<div class="flex flex-col gap-3">
+		<div class="flex items-center justify-between gap-4">
+			<div class="relative flex-1">
+				<Search class="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-text-dim" />
+				<input
+					type="text"
+					bind:value={searchQuery}
+					placeholder="RECHERCHER UNE MAP (TITRE, ARTISTE)..."
+					class="w-full bg-surface border-4 border-secondary rounded-2xl pl-12 pr-4 py-3 text-text font-black text-sm uppercase tracking-wider focus:outline-none focus:border-primary shadow-[5px_5px_0px_#1a0033]"
+				/>
+			</div>
+
+			<label
+				class="px-5 py-3 rounded-2xl border-4 border-secondary bg-primary text-secondary shadow-[5px_5px_0px_#1a0033] text-xs font-black uppercase cursor-pointer transition-transform hover:scale-105 flex items-center gap-2 shrink-0"
+			>
+				<Upload class="w-4 h-4" /> Import .osz / .titm
+				<input
+					type="file"
+					accept=".osz,.titm,.osu"
+					onchange={(e) => {
+						const input = e.target as HTMLInputElement;
+						if (input.files?.[0]) processFileImport(input.files[0]);
+						input.value = '';
+					}}
+					class="sr-only"
+				/>
+			</label>
 		</div>
 
-		<label
-			class="px-5 py-3 rounded-2xl border-4 border-secondary bg-primary text-secondary shadow-[5px_5px_0px_#1a0033] text-xs font-black uppercase cursor-pointer transition-transform hover:scale-105 flex items-center gap-2 shrink-0"
-		>
-			<Upload class="w-4 h-4" /> Import .osz / .titm
-			<input
-				type="file"
-				accept=".osz,.titm,.osu"
-				onchange={(e) => {
-					const input = e.target as HTMLInputElement;
-					if (input.files?.[0]) processFileImport(input.files[0]);
-					input.value = '';
-				}}
-				class="sr-only"
-			/>
-		</label>
+		<!-- Options de Tri & Compteur -->
+		<div class="flex flex-wrap items-center justify-between gap-3 px-1">
+			<div class="flex flex-wrap items-center gap-2 text-xs font-black uppercase tracking-wider text-text-dim">
+				<SlidersHorizontal class="w-4 h-4 text-primary shrink-0" />
+				<span>Trier par :</span>
+				<select
+					bind:value={sortBy}
+					class="bg-surface border-2 border-secondary rounded-lg px-3 py-1.5 text-text font-black text-xs uppercase tracking-wider cursor-pointer shadow-[2px_2px_0px_#1a0033] focus:outline-none focus:border-primary"
+				>
+					<option value="recent">Dernier joué / Récent</option>
+					<option value="difficulty">Difficulté</option>
+					<option value="name">Titre (Nom)</option>
+					<option value="artist">Artiste</option>
+					<option value="bpm">Tempo (BPM)</option>
+					<option value="notes">Nombre de notes</option>
+				</select>
+
+				<button
+					onclick={() => (sortOrder = sortOrder === 'asc' ? 'desc' : 'asc')}
+					class="border-2 border-secondary bg-surface text-primary px-3 py-1.5 rounded-lg shadow-[2px_2px_0px_#1a0033] hover:translate-x-[1px] hover:translate-y-[1px] cursor-pointer transition-all flex items-center gap-1.5 font-black text-xs uppercase"
+					title={sortOrder === 'asc' ? 'Ordre Croissant (A-Z, 0-9)' : 'Ordre Décroissant (Z-A, 9-0)'}
+				>
+					<ArrowUpDown class="w-3.5 h-3.5" />
+					<span>{sortOrder === 'asc' ? 'ASC ⬆' : 'DESC ⬇'}</span>
+				</button>
+			</div>
+
+			<div class="text-[11px] font-black uppercase tracking-wider text-text-dim">
+				{filteredMaps.length} map{filteredMaps.length > 1 ? 's' : ''} disponible{filteredMaps.length > 1 ? 's' : ''}
+			</div>
+		</div>
 	</div>
 
 	<!-- Liste des cartes de niveaux -->
