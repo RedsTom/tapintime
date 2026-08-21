@@ -2,6 +2,7 @@
 	import type { RankGrade, MapScore } from '$lib/features/progression/progression';
 	import type { MapInfo } from '$lib/features/beatmap/types';
 	import { MoreVertical, Edit2, Trash2, Music } from '@lucide/svelte';
+	import { _ } from '$lib/i18n';
 
 	let {
 		map,
@@ -105,7 +106,14 @@
 	></div>
 
 	<div 
+		role="button"
+		tabindex="0"
 		onclick={() => onSelect?.(id)}
+		onkeydown={(e) => {
+			if (e.key === 'Enter' || e.key === ' ') {
+				onSelect?.(id);
+			}
+		}}
 		class="
 			relative border-4 border-secondary p-3.5 md:p-4 rounded-lg flex flex-col md:flex-row md:items-center justify-between 
 			transition-all duration-150 ease-out cursor-pointer select-none text-left gap-3
@@ -150,7 +158,7 @@
 				<div class="text-[11px] font-bold uppercase tracking-wider flex flex-wrap items-center gap-x-2 gap-y-0.5 {isSelected ? 'text-secondary/80' : 'text-text-dim'}">
 					<span>{artist}</span>
 					{#if mapper}
-						<span>• Map par {mapper}</span>
+						<span>• {$_('level_card.mapped_by', { values: { mapper } })}</span>
 					{/if}
 					{#if bpm}
 						<span>• {bpm} BPM</span>
@@ -162,7 +170,7 @@
 		<div class="flex items-center justify-between md:justify-end gap-3 border-t md:border-t-0 border-secondary/20 pt-2 md:pt-0 shrink-0">
 			{#if highScore !== undefined && highScore > 0}
 				<div class="flex flex-col text-left md:text-right">
-					<span class="text-[9px] font-black uppercase {isSelected ? 'text-secondary/70' : 'text-text-dim'}">Meilleur Score</span>
+					<span class="text-[9px] font-black uppercase {isSelected ? 'text-secondary/70' : 'text-text-dim'}">{$_('level_card.best_score')}</span>
 					<span class="text-xs font-black tracking-wide">{highScore.toLocaleString()}</span>
 				</div>
 			{/if}
@@ -192,9 +200,18 @@
 					{#if isMenuOpen}
 						<div 
 							class="fixed inset-0 z-40" 
+							role="button"
+							tabindex="-1"
+							aria-label={$_('common.close')}
 							onclick={(e) => {
 								e.stopPropagation();
 								isMenuOpen = false;
+							}}
+							onkeydown={(e) => {
+								if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+									e.stopPropagation();
+									isMenuOpen = false;
+								}
 							}}
 						></div>
 
@@ -204,7 +221,7 @@
 									onclick={handleEdit}
 									class="flex items-center gap-2 px-3 py-1.5 rounded text-xs font-black uppercase text-text hover:bg-primary/20 hover:text-primary transition-all text-left cursor-pointer"
 								>
-									<Edit2 class="w-3.5 h-3.5" /> Éditer
+									<Edit2 class="w-3.5 h-3.5" /> {$_('common.edit')}
 								</button>
 							{/if}
 							{#if onDelete}
@@ -212,7 +229,7 @@
 									onclick={handleDelete}
 									class="flex items-center gap-2 px-3 py-1.5 rounded text-xs font-black uppercase text-accent hover:bg-accent/20 transition-all text-left cursor-pointer"
 								>
-									<Trash2 class="w-3.5 h-3.5 text-accent" /> Supprimer
+									<Trash2 class="w-3.5 h-3.5 text-accent" /> {$_('common.delete')}
 								</button>
 							{/if}
 						</div>

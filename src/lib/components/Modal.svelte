@@ -31,6 +31,7 @@
 		<div 
 			class="bg-surface border-4 border-secondary rounded-xl p-6 shadow-[8px_8px_0px_0px_#1a0033] max-w-lg w-full flex flex-col gap-4 relative overflow-hidden"
 			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => e.stopPropagation()}
 			role="dialog"
 			tabindex="-1"
 		>
