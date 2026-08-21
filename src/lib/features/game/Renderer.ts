@@ -1,5 +1,5 @@
 import { Application, Container, Graphics } from 'pixi.js';
-import { COLORS, GAME } from '$lib/tokens';
+import { COLORS_HEX, GAME } from '$lib/tokens';
 import { NotePool } from './objectPool';
 import type { GameState } from './GameState';
 import type { Layout } from '$lib/schemas/titl';
@@ -8,6 +8,12 @@ import { getFingerColor, getFingerForKey } from '$lib/features/layout/fingerColo
 /**
  * Coordonnateur de rendu Canvas 2D / WebGL via PixiJS.
  * Gère la piste, la ligne d'impact, le défilement fluide des notes et les effets de frappe.
+ *
+ * Optimisations :
+ * - Couleurs pré-calculées en constantes numériques (zéro parseInt à chaque frame)
+ * - Spark pooling avec swap-and-pop O(1) pour éliminer les stutters GC
+ * - incomingKeys calculé directement dans la boucle de mise à jour des notes (zéro itération supplémentaire)
+ * - travelTimeMs pré-calculé (ne change pas pendant le jeu)
  */
 export class Renderer {
 	private app: Application;
@@ -17,13 +23,21 @@ export class Renderer {
 	public pool: NotePool;
 	public noteSpeed: number;
 
-	// Spark pooling to eliminate WebGL buffer reallocation and GC stutters
+	// Spark pooling avec swap-and-pop pour éliminer les réallocations WebGL et les pauses GC
 	private sparkPool: Graphics[] = [];
 	private activeSparks: { el: Graphics; life: number }[] = [];
 
-	// Layout colors caching for fast O(1) rendering lookups
+	// Cache des couleurs par doigt pour un lookup O(1)
 	private fingerColorCache: Map<string, string> = new Map();
 	private cachedLayout: Layout | null = null;
+
+	// Pré-calcul des constantes de défilement (ne changent jamais pendant le jeu)
+	private cachedTravelDistance: number = 0;
+	private cachedTravelTimeMs: number = 0;
+
+	// Touches « entrantes » calculées pendant updateNotes() — exposées au moteur
+	public incomingKeys: Set<string> = new Set();
+	private nextIncomingKeys: Set<string> = new Set();
 
 	constructor(app: Application, totalLanes: number = 1, noteSpeed: number = GAME.noteSpeed) {
 		this.app = app;
@@ -38,11 +52,15 @@ export class Renderer {
 
 		this.pool = new NotePool(this.noteContainer, GAME.objectPoolSize);
 
-		// Pre-populate spark pool (15 sparks should be plenty for simultaneous hits)
+		// Pré-calcul des constantes de défilement
+		this.cachedTravelDistance = (this.app.screen.width + 80) - this.hitLineX;
+		this.cachedTravelTimeMs = (this.cachedTravelDistance / this.noteSpeed) * 1000;
+
+		// Pré-peupler le pool de sparks (15 suffisent pour les hits simultanés)
 		for (let i = 0; i < 15; i++) {
 			const spark = new Graphics()
 				.roundRect(-38, -38, 76, 76, 12)
-				.fill({ color: 0xFFFFFF }); // Base white for easy tinting
+				.fill({ color: 0xFFFFFF }); // Blanc de base pour le tinting
 			spark.visible = false;
 			this.hitSparks.addChild(spark);
 			this.sparkPool.push(spark);
@@ -73,8 +91,8 @@ export class Renderer {
 				trackHeight,
 				trackRadius
 			)
-			.fill({ color: parseInt(COLORS.secondary.replace('#', ''), 16), alpha: 0.9 })
-			.stroke({ width: 4, color: parseInt(COLORS.primary.replace('#', ''), 16), alpha: 1.0 });
+			.fill({ color: COLORS_HEX.secondary, alpha: 0.9 })
+			.stroke({ width: 4, color: COLORS_HEX.primary, alpha: 1.0 });
 		this.app.stage.addChild(trackLane);
 
 		// Zone de frappe et ligne laser
@@ -84,14 +102,14 @@ export class Renderer {
 			const laneYOffset = (i - (totalLanes - 1) / 2) * laneSpacing;
 			const targetZoneGfx = new Graphics()
 				.roundRect(-38, -38 + laneYOffset, 76, 76, 12)
-				.fill({ color: parseInt(COLORS.primary.replace('#', ''), 16), alpha: 0.25 })
-				.stroke({ width: 4, color: parseInt(COLORS.accent.replace('#', ''), 16), alpha: 1.0 });
+				.fill({ color: COLORS_HEX.primary, alpha: 0.25 })
+				.stroke({ width: 4, color: COLORS_HEX.accent, alpha: 1.0 });
 			hitLine.addChild(targetZoneGfx);
 		}
 
 		const laserLineGfx = new Graphics()
 			.rect(-3, -trackHeight / 2, 6, trackHeight)
-			.fill({ color: parseInt(COLORS.primary.replace('#', ''), 16), alpha: 1.0 });
+			.fill({ color: COLORS_HEX.primary, alpha: 1.0 });
 		hitLine.addChild(laserLineGfx);
 		
 		hitLine.position.set(this.hitLineX, yCenter);
@@ -178,7 +196,7 @@ export class Renderer {
 	}
 
 	/**
-	 * Animate existing sparks in a single tick to avoid multi-ticker overhead and closures.
+	 * Anime les sparks existants en un seul tick avec swap-and-pop O(1).
 	 */
 	private updateSparks() {
 		for (let i = this.activeSparks.length - 1; i >= 0; i--) {
@@ -187,7 +205,12 @@ export class Renderer {
 			if (sparkObj.life <= 0) {
 				sparkObj.el.visible = false;
 				this.sparkPool.push(sparkObj.el);
-				this.activeSparks.splice(i, 1);
+				// Swap-and-pop O(1) au lieu de splice O(n)
+				const lastIdx = this.activeSparks.length - 1;
+				if (i !== lastIdx) {
+					this.activeSparks[i] = this.activeSparks[lastIdx];
+				}
+				this.activeSparks.pop();
 			} else {
 				sparkObj.el.alpha = sparkObj.life;
 			}
@@ -196,11 +219,12 @@ export class Renderer {
 
 	/**
 	 * Fait défiler les notes et gère leur apparition / disparition à chaque frame.
+	 * Calcule aussi les `incomingKeys` dans la même boucle (évite une itération supplémentaire).
 	 */
 	private updateNotes(state: GameState, currentTimeMs: number, layout?: Layout | null) {
 		const yCenter = this.app.screen.height * 0.38;
-		const travelDistance = (this.app.screen.width + 80) - this.hitLineX;
-		const travelTimeMs = (travelDistance / this.noteSpeed) * 1000;
+		const travelTimeMs = this.cachedTravelTimeMs;
+		const hitLineX = this.hitLineX;
 
 		// Spawning O(1) des notes à venir
 		while (
@@ -210,24 +234,30 @@ export class Renderer {
 			const idx = state.nextNoteIndex;
 			const hitObj = state.manifest.hitObjects[idx];
 			const fingerColor = this.getCachedFingerColor(hitObj.char, layout);
-			const note = this.pool.acquire(hitObj.char, hitObj.time, fingerColor, (hitObj as any).laneIndex || 0);
-			// Remarque: Pas besoin d'appeler noteContainer.addChild à chaque frame
-			// si note.container est déjà attaché de manière persistante lors de l'acquire.
+			this.pool.acquire(hitObj.char, hitObj.time, fingerColor, (hitObj as any).laneIndex || 0);
 			state.processedIndices.add(idx);
 			state.nextNoteIndex++;
 		}
 
-		// Déplacement des notes actives
+		// Calcul des incomingKeys : réutiliser le Set existant pour éviter toute allocation
+		this.nextIncomingKeys.clear();
+
+		// Déplacement des notes actives + calcul incomingKeys dans la MÊME boucle
 		const activeNotes = this.pool.getActive();
 		for (let i = activeNotes.length - 1; i >= 0; i--) {
 			const note = activeNotes[i];
 			if (!note || !note.active) continue;
 
 			const timeRemainingSec = (note.time - currentTimeMs) / 1000;
-			const targetX = this.hitLineX + timeRemainingSec * this.noteSpeed;
+			const targetX = hitLineX + timeRemainingSec * this.noteSpeed;
 
 			const laneY = this.getLaneY(note.laneIndex ?? 0, state.totalLanes, yCenter);
 			note.container.position.set(targetX, laneY);
+
+			// Calcul incomingKeys intégré — zéro itération supplémentaire
+			if (targetX > hitLineX && targetX < hitLineX + 300) {
+				this.nextIncomingKeys.add(note.char.toLowerCase());
+			}
 
 			// Détection des ratés (timing dépassé) sans faire disparaître la note immédiatement
 			if (!note.missed && currentTimeMs >= 0 && currentTimeMs - note.time > state.timingWindows.goodWindow) {
@@ -240,5 +270,10 @@ export class Renderer {
 				this.pool.release(note);
 			}
 		}
+
+		// Swap les Sets pour exposer les incomingKeys sans allocation
+		const temp = this.incomingKeys;
+		this.incomingKeys = this.nextIncomingKeys;
+		this.nextIncomingKeys = temp;
 	}
 }
