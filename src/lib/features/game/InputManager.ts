@@ -1,8 +1,15 @@
 /**
  * Gestionnaire d'événements clavier pour la session de jeu.
+ *
+ * Optimisation : expose une référence directe au Set de touches pressées
+ * et un compteur de version pour signaler les changements sans allocation.
  */
 export class InputManager {
-	private pressedKeys: Set<string> = new Set();
+	/** Touches actuellement pressées (référence stable, pas de new Set à chaque événement) */
+	public readonly pressedKeys: Set<string> = new Set();
+	/** Compteur incrémenté à chaque changement de touches pressées (évite de créer un nouveau Set) */
+	public pressedVersion: number = 0;
+
 	private keydownListener: (e: KeyboardEvent) => void;
 	private keyupListener: (e: KeyboardEvent) => void;
 	private onKeyPress: (code: string) => void;
@@ -14,7 +21,7 @@ export class InputManager {
 		onKeyPress: (code: string) => void;
 		onEscape: () => void;
 		onEnter: () => void;
-		onPressedKeysChange: (keys: Set<string>) => void;
+		onPressedKeysChange: (keys: Set<string>, version: number) => void;
 	}) {
 		this.onKeyPress = callbacks.onKeyPress;
 		this.onEscape = callbacks.onEscape;
@@ -33,14 +40,16 @@ export class InputManager {
 			}
 
 			if (e.code) this.pressedKeys.add(e.code);
-			callbacks.onPressedKeysChange(new Set(this.pressedKeys));
+			this.pressedVersion++;
+			callbacks.onPressedKeysChange(this.pressedKeys, this.pressedVersion);
 
 			if (e.code) this.onKeyPress(e.code);
 		};
 
 		this.keyupListener = (e: KeyboardEvent) => {
 			if (e.code) this.pressedKeys.delete(e.code);
-			callbacks.onPressedKeysChange(new Set(this.pressedKeys));
+			this.pressedVersion++;
+			callbacks.onPressedKeysChange(this.pressedKeys, this.pressedVersion);
 		};
 
 		window.addEventListener('keydown', this.keydownListener);
