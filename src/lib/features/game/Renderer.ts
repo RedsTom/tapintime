@@ -20,8 +20,8 @@ export interface TimingWindows {
  * - Spark pooling avec swap-and-pop O(1) pour éliminer les stutters GC
  * - incomingKeys calculé directement dans la boucle de mise à jour des notes (zéro itération supplémentaire)
  * - travelTimeMs pré-calculé (ne change pas pendant le jeu)
- * - Animation réactive du caret (indicateur de perfect) lors des frappes
- * - Zones de timing (Perfect, Great, Good) affichées en arrière-plan translucide sur la piste
+ * - Animation réactive du caret (blink / scale bounce sans altérer sa couleur d'origine)
+ * - Zones de timing (Perfect, Great, Good) discrètes avec bords arrondis, sous le caret et les notes
  */
 export class Renderer {
 	private app: Application;
@@ -39,7 +39,6 @@ export class Renderer {
 
 	// Animation du caret (indicateur de perfect / ligne laser)
 	private caretPulseLife: number = 0;
-	private caretPulseColor: number = COLORS_HEX.primary;
 
 	// Cache des couleurs par doigt pour un lookup O(1)
 	private fingerColorCache: Map<string, string> = new Map();
@@ -130,38 +129,38 @@ export class Renderer {
 			.fill({ color: 0xffffff });
 		this.app.stage.addChild(trackMask);
 
-		// --- ZONES DE TIMING TRANSLUCIDES SUR LE FOND DE LA PARTITION ---
+		// --- ZONES DE TIMING TRANSLUCIDES & DISCRÈTES SUR LE FOND DE LA PARTITION ---
 		const timingContainer = new Container();
 		timingContainer.mask = trackMask;
 
 		const windows = timingWindows ?? { perfectWindow: 80, greatWindow: 160, goodWindow: 240 };
 		const topY = yCenter - trackHeight / 2;
 
-		// 1. Zone Good (Extérieure - Bleu)
+		// 1. Zone Good (Extérieure - Bleu très discret avec bords arrondis)
 		const dxGood = (windows.goodWindow / 1000) * this.noteSpeed;
 		const goodZone = new Graphics()
-			.rect(hitLineX - dxGood, topY, dxGood * 2, trackHeight)
-			.fill({ color: COLORS_HEX.good, alpha: 0.14 });
+			.roundRect(hitLineX - dxGood, topY + 4, dxGood * 2, trackHeight - 8, 12)
+			.fill({ color: COLORS_HEX.good, alpha: 0.05 });
 		timingContainer.addChild(goodZone);
 
-		// 2. Zone Great (Intermédiaire - Vert)
+		// 2. Zone Great (Intermédiaire - Vert discret avec bords arrondis)
 		const dxGreat = (windows.greatWindow / 1000) * this.noteSpeed;
 		const greatZone = new Graphics()
-			.rect(hitLineX - dxGreat, topY, dxGreat * 2, trackHeight)
-			.fill({ color: COLORS_HEX.great, alpha: 0.20 });
+			.roundRect(hitLineX - dxGreat, topY + 4, dxGreat * 2, trackHeight - 8, 10)
+			.fill({ color: COLORS_HEX.great, alpha: 0.09 });
 		timingContainer.addChild(greatZone);
 
-		// 3. Zone Perfect (Centre / Caret - Jaune Or)
+		// 3. Zone Perfect (Centre / Caret - Jaune Or discret avec bords arrondis)
 		const dxPerfect = (windows.perfectWindow / 1000) * this.noteSpeed;
 		const perfectZone = new Graphics()
-			.rect(hitLineX - dxPerfect, topY, dxPerfect * 2, trackHeight)
-			.fill({ color: COLORS_HEX.perfect, alpha: 0.30 })
-			.stroke({ width: 2, color: COLORS_HEX.perfect, alpha: 0.6 });
+			.roundRect(hitLineX - dxPerfect, topY + 4, dxPerfect * 2, trackHeight - 8, 8)
+			.fill({ color: COLORS_HEX.perfect, alpha: 0.14 })
+			.stroke({ width: 1.5, color: COLORS_HEX.perfect, alpha: 0.25 });
 		timingContainer.addChild(perfectZone);
 
-		// Graduations / Ticks visuels en haut et en bas des bordures de timing
+		// Graduations / Ticks visuels subtils en haut et en bas des bordures de timing
 		const ticksGfx = new Graphics();
-		const tickHeight = 8;
+		const tickHeight = 6;
 		[
 			{ dx: dxGood, color: COLORS_HEX.good },
 			{ dx: dxGreat, color: COLORS_HEX.great },
@@ -170,16 +169,16 @@ export class Renderer {
 			[-dx, dx].forEach((offsetX) => {
 				const posX = hitLineX + offsetX;
 				ticksGfx
-					.rect(posX - 1, topY, 2, tickHeight)
-					.fill({ color, alpha: 0.8 })
-					.rect(posX - 1, topY + trackHeight - tickHeight, 2, tickHeight)
-					.fill({ color, alpha: 0.8 });
+					.rect(posX - 1, topY + 4, 2, tickHeight)
+					.fill({ color, alpha: 0.4 })
+					.rect(posX - 1, topY + trackHeight - 4 - tickHeight, 2, tickHeight)
+					.fill({ color, alpha: 0.4 });
 			});
 		});
 		timingContainer.addChild(ticksGfx);
 		this.app.stage.addChild(timingContainer);
 
-		// Zone de frappe et ligne laser (Caret)
+		// Zone de frappe et ligne laser (Caret au-dessus du fond de timing)
 		const hitLine = new Container();
 		this.targetZoneGfxList = [];
 		
@@ -201,7 +200,7 @@ export class Renderer {
 		hitLine.position.set(hitLineX, yCenter);
 		this.app.stage.addChild(hitLine);
 
-		// Conteneur de notes avec masque de rognage
+		// Conteneur de notes avec masque de rognage (au-dessus du caret et du timing)
 		const noteContainer = new Container();
 		noteContainer.mask = trackMask;
 		this.app.stage.addChild(noteContainer);
@@ -244,15 +243,15 @@ export class Renderer {
 	}
 
 	/**
-	 * Déclenche une animation visuelle (impulsion + clignotement / flash) sur le caret lors d'un hit.
+	 * Déclenche une animation visuelle (impulsion + blink d'intensité) sur le caret lors d'un hit.
 	 */
-	public triggerCaretPulse(color: number = COLORS_HEX.perfect) {
+	public triggerCaretPulse() {
 		this.caretPulseLife = 1.0;
-		this.caretPulseColor = color;
 	}
 
 	/**
 	 * Met à jour l'animation de clignotement et d'impulsion du caret à chaque frame.
+	 * Conserve impérativement la couleur d'origine du caret sans la teinter.
 	 */
 	private updateCaretAnimation() {
 		if (this.caretPulseLife > 0) {
@@ -263,20 +262,18 @@ export class Renderer {
 			const scale = 1.0 + life * 0.16;
 			this.hitLine.scale.set(scale, scale);
 
-			// Flash lumineux et changement de couleur de la ligne laser
-			this.laserLineGfx.tint = this.caretPulseColor;
-			this.laserLineGfx.alpha = 0.7 + life * 0.3;
+			// Flash de clignotement / luminosité (alpha) sans changer la couleur du caret
+			this.laserLineGfx.alpha = 1.0 + life * 0.5;
 
 			for (const zone of this.targetZoneGfxList) {
-				zone.tint = this.caretPulseColor;
+				zone.alpha = 1.0 + life * 0.3;
 			}
 		} else if (this.hitLine.scale.x !== 1.0) {
 			// Réinitialisation douce à l'état initial
 			this.hitLine.scale.set(1.0, 1.0);
-			this.laserLineGfx.tint = 0xFFFFFF;
 			this.laserLineGfx.alpha = 1.0;
 			for (const zone of this.targetZoneGfxList) {
-				zone.tint = 0xFFFFFF;
+				zone.alpha = 1.0;
 			}
 		}
 	}
@@ -286,8 +283,8 @@ export class Renderer {
 	 * Anime également le caret.
 	 */
 	public spawnHitSpark(x: number, y: number, color: number) {
-		// Animer le caret (ligne d'impact / perfect indicator)
-		this.triggerCaretPulse(color);
+		// Animer le caret (impulsion + blink sans changement de couleur)
+		this.triggerCaretPulse();
 
 		let spark = this.sparkPool.pop();
 		if (!spark) {
