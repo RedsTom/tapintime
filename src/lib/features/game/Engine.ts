@@ -4,9 +4,9 @@ import { Renderer } from './Renderer';
 import { InputManager } from './InputManager';
 import { getPlaybackTime, resumeAudioContext, ensureAudioContextRunning, scheduleAudioPlay, pauseAudio, resumeAudioFromPause, stopAudio } from '../../audio';
 import type { Manifest } from '../beatmap/schemas/titm';
-import type { Layout } from '../layout/schemas/titl';
+import type { Layout, Key } from '../layout/schemas/titl';
 import { getFingerForKey } from '../layout/fingerColors';
-import { COLORS, GAME, type LeniencyMode } from '$lib/tokens';
+import { COLORS_HEX, GAME, type LeniencyMode } from '$lib/tokens';
 
 export interface EngineCallbacks {
 	onStateUpdate: (state: GameState) => void;
@@ -61,6 +61,12 @@ class SmoothClock {
 /**
  * Orchestrateur principal du moteur de jeu.
  * Synchronise l'horloge audio, la saisie utilisateur et le rendu Canvas PixiJS.
+ *
+ * Optimisations :
+ * - Map<keyCode, Key> pré-construit pour handleKeyPress O(1) au lieu de find() O(n)
+ * - Throttle des mises à jour DOM du clavier virtuel (~100ms au lieu de chaque frame)
+ * - incomingKeys lu depuis le Renderer (déjà calculé dans la boucle de rendu)
+ * - Touches pressées : référence stable du Set, pas de new Set() à chaque événement
  */
 export class Engine {
 	public app: Application | null = null;
@@ -81,9 +87,19 @@ export class Engine {
 	private smoothClock = new SmoothClock();
 
 	private pressedKeys: Set<string> = new Set();
-	private incomingKeys: Set<string> = new Set();
+
+	// Cache DOM du clavier virtuel
 	private keyboardEl: HTMLElement | null = null;
-	private keyElements: HTMLElement[] = [];
+	private keyElementsMap: Map<string, HTMLElement> = new Map();
+	private keyElementsInitialized: boolean = false;
+
+	// Throttle du clavier virtuel DOM (~100ms)
+	private lastKeyboardUpdateMs: number = 0;
+	private keyboardDirty: boolean = false;
+	private static readonly KEYBOARD_THROTTLE_MS = 100;
+
+	// Map pré-construit keyCode → Key pour lookup O(1)
+	private keyCodeMap: Map<string, Key> = new Map();
 
 	constructor(
 		canvasEl: HTMLCanvasElement,
@@ -103,6 +119,9 @@ export class Engine {
 		this.noteSpeed = noteSpeed;
 		this.callbacks = callbacks;
 
+		// Pré-construire le Map keyCode → Key pour handleKeyPress O(1)
+		this.buildKeyCodeMap();
+
 		this.state.onMissCallback = (note, comboBefore) => {
 			const finger = getFingerForKey(note.char, this.layout);
 			this.callbacks.onHit('miss', note.char, finger, 0, comboBefore);
@@ -110,6 +129,19 @@ export class Engine {
 		};
 
 		this.ready = this.init(canvasEl).catch(console.error);
+	}
+
+	/**
+	 * Construit un Map de lookup rapide keyCode → Key
+	 * pour éviter le Array.find() linéaire à chaque frappe.
+	 */
+	private buildKeyCodeMap() {
+		if (!this.layout.layers[0]) return;
+		for (const key of this.layout.layers[0].keys) {
+			this.keyCodeMap.set(key.keyCode, key);
+			// Stocker aussi la version lowercase pour les cas insensibles
+			this.keyCodeMap.set(key.keyCode.toLowerCase(), key);
+		}
 	}
 
 	private async init(canvasEl: HTMLCanvasElement) {
@@ -145,7 +177,7 @@ export class Engine {
 			},
 			onPressedKeysChange: (keys) => {
 				this.pressedKeys = keys;
-				this.updateKeyboardDOM();
+				this.keyboardDirty = true;
 				this.callbacks.onPressedKeysChange(keys);
 			}
 		});
@@ -193,16 +225,16 @@ export class Engine {
 		const currentTimeMs = this.smoothClock.update(rawAudioTimeMs);
 
 		// Rendu ultra-fluide 60/120/144 FPS
+		// Le Renderer calcule aussi incomingKeys dans la même boucle — zéro itération redondante
 		this.renderer.update(this.state, currentTimeMs + this.visualOffsetMs, this.layout);
 
-		// Calculer les touches "incoming" de manière optimisée
-		this.incomingKeys.clear();
-		for (const note of this.renderer.pool.getActive()) {
-			if (note.container.x > this.renderer.hitLineX && note.container.x < this.renderer.hitLineX + 300) {
-				this.incomingKeys.add(note.char.toLowerCase());
-			}
+		// Mise à jour du clavier virtuel DOM — throttlée à ~100ms
+		const now = performance.now();
+		if (this.keyboardDirty || now - this.lastKeyboardUpdateMs >= Engine.KEYBOARD_THROTTLE_MS) {
+			this.updateKeyboardDOM();
+			this.lastKeyboardUpdateMs = now;
+			this.keyboardDirty = false;
 		}
-		this.updateKeyboardDOM();
 
 		if (
 			!this.finished &&
@@ -218,21 +250,38 @@ export class Engine {
 		}
 	}
 
+	/**
+	 * Initialise le cache DOM du clavier virtuel une seule fois.
+	 */
 	private initKeyboardElements() {
-		if (!this.keyboardEl) {
-			this.keyboardEl = document.getElementById('game-keyboard-container');
-		}
+		if (this.keyElementsInitialized) return;
+		this.keyboardEl = document.getElementById('game-keyboard-container');
 		if (!this.keyboardEl) return;
-		this.keyElements = Array.from(this.keyboardEl.querySelectorAll('.keyboard-key')) as HTMLElement[];
+		const elements = this.keyboardEl.querySelectorAll('.keyboard-key') as NodeListOf<HTMLElement>;
+		for (const el of elements) {
+			const key = el.dataset.key || '';
+			if (key) {
+				this.keyElementsMap.set(key.toLowerCase(), el);
+			}
+		}
+		this.keyElementsInitialized = true;
 	}
 
+	/**
+	 * Met à jour les états visuels du clavier virtuel DOM.
+	 * Throttlée à ~100ms car l'état "incoming" n'a pas besoin de 144 fps de précision.
+	 * Utilise un cache Map<string, HTMLElement> au lieu de querySelectorAll à chaque frame.
+	 */
 	private updateKeyboardDOM() {
-		if (this.keyElements.length === 0) {
+		if (!this.keyElementsInitialized) {
 			this.initKeyboardElements();
 		}
-		if (this.keyElements.length === 0) return;
+		if (this.keyElementsMap.size === 0) return;
 
-		for (const htmlEl of this.keyElements) {
+		// Lire les incomingKeys directement depuis le Renderer (déjà calculé dans updateNotes)
+		const incomingKeys = this.renderer.incomingKeys;
+
+		for (const [, htmlEl] of this.keyElementsMap) {
 			const unlocked = htmlEl.dataset.unlocked === 'true';
 			if (!unlocked) continue;
 
@@ -240,7 +289,7 @@ export class Engine {
 			const code = htmlEl.dataset.code || '';
 			
 			const isPressed = this.pressedKeys.has(code) || this.pressedKeys.has(char);
-			const isIncoming = this.incomingKeys.has(char);
+			const isIncoming = incomingKeys.has(char);
 
 			const wasPressed = htmlEl.dataset.statePressed === 'true';
 			const wasIncoming = htmlEl.dataset.stateIncoming === 'true';
@@ -292,9 +341,10 @@ export class Engine {
 		if (!this.running || this.isPaused) return;
 		if (getPlaybackTime() * 1000 < 0) return;
 
-		let layoutKey = this.layout.layers[0]?.keys.find((k) => k.keyCode === code);
+		// Lookup O(1) via le Map pré-construit au lieu de Array.find() O(n)
+		let layoutKey = this.keyCodeMap.get(code);
 		if (!layoutKey) {
-			layoutKey = this.layout.layers[0]?.keys.find((k) => k.keyCode.toLowerCase() === code.toLowerCase());
+			layoutKey = this.keyCodeMap.get(code.toLowerCase());
 		}
 		if (!layoutKey) return;
 
@@ -309,10 +359,10 @@ export class Engine {
 			const { rating, deltaMs, laneIndex } = hitResult;
 			const color =
 				rating === 'perfect'
-					? parseInt(COLORS.perfect.replace('#', ''), 16)
+					? COLORS_HEX.perfect
 					: rating === 'great'
-						? parseInt(COLORS.great.replace('#', ''), 16)
-						: parseInt(COLORS.good.replace('#', ''), 16);
+						? COLORS_HEX.great
+						: COLORS_HEX.good;
 
 			const yCenter = this.app!.screen.height * 0.38;
 			const hitY = this.renderer.getLaneY(laneIndex, this.state.totalLanes, yCenter);
